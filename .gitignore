@@ -1,6 +1,7 @@
 # Python
 __pycache__/
 *.py[cod]
+*.egg-info/
 .venv/
 venv/
 .pytest_cache/
@@ -19,7 +20,14 @@ venv/
 
 # Кэш инструментов
 .npm-cache/
+.uv-cache/
 node_modules/
+
+# Временные файлы локальных проверок
+.tmp/
+
+# Артефакты тестов
+reports/
 
 # ОС и IDE
 .DS_Store

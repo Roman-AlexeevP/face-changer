@@ -114,12 +114,19 @@ def pay(order: Order, now: datetime) -> Result[Order, OrderError]:
 
 ## Команды
 
-```bash
-ruff check . && ruff format --check .
-pytest -q
-openspec validate --all
-docker compose up --build
+Всё в контейнерах, хостовое окружение не требуется:
+
+```powershell
+.\tasks.ps1 test      # pytest + HTML-отчёт в reports/
+.\tasks.ps1 lint      # ruff check + ruff format --check
+.\tasks.ps1 migrate   # alembic upgrade head (одноразовая джоба)
+.\tasks.ps1 up        # postgres + bot + worker
 ```
+
+Без обёртки: `docker compose --profile test run --rm tests`,
+`docker compose --profile tools run --rm migrate`.
+
+Спецификации: `openspec validate --all`.
 
 ## Git
 

@@ -16,14 +16,14 @@
 
 ## 1. Каркас проекта
 
-- [ ] 1.1 `pyproject.toml`, ruff, pytest, `.env.example`
-- [ ] 1.2 `docker-compose.yml`: postgres, bot, worker
-- [ ] 1.3 `app/config.py` на pydantic-settings, падение при отсутствии секретов
-- [ ] 1.4 `app/obs/logs.py`: JSON-логи, редакция PII
-- [ ] 1.5 `app/db/session.py`, `app/db/models.py` (6 таблиц)
-- [ ] 1.6 Alembic, первая миграция, `alembic upgrade head` в entrypoint
-- [ ] 1.7 Тест архитектуры: `domain/` не импортирует `aiogram`, `sqlalchemy`, `httpx`
-- [ ] 1.8 `app/domain/result.py`: `Ok`/`Err` без внешних зависимостей
+- [x] 1.1 `pyproject.toml`, ruff, pytest, `.env.example`
+- [x] 1.2 `docker-compose.yml`: postgres, bot, worker
+- [x] 1.3 `app/config.py` на pydantic-settings, падение при отсутствии секретов
+- [x] 1.4 `app/obs/logs.py`: JSON-логи, редакция PII
+- [x] 1.5 `app/db/session.py`, `app/db/models.py` (6 таблиц)
+- [x] 1.6 Alembic, первая миграция, `alembic upgrade head` в entrypoint
+- [x] 1.7 Тест архитектуры: `domain/` не импортирует `aiogram`, `sqlalchemy`, `httpx`
+- [x] 1.8 `app/domain/result.py`: `Ok`/`Err` без внешних зависимостей
 
 ## 2. Домен
 

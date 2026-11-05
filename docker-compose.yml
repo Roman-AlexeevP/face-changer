@@ -1,0 +1,90 @@
+name: face-changer
+
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pass}
+      POSTGRES_DB: ${POSTGRES_DB:-facechanger}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  bot:
+    build:
+      context: .
+      target: runtime
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://user:pass@postgres:5432/facechanger}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: ["python", "-m", "app.main_bot"]
+
+  # Одноразовая джоба: применяет миграции и завершается.
+  # Запуск: docker compose --profile tools run --rm migrate
+  migrate:
+    profiles: ["tools"]
+    build:
+      context: .
+      target: runtime
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://user:pass@postgres:5432/facechanger}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+    command: ["alembic", "upgrade", "head"]
+
+  worker:
+    build:
+      context: .
+      target: runtime
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://user:pass@postgres:5432/facechanger}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      bot:
+        condition: service_started
+    stop_grace_period: 30s
+    command: ["python", "-m", "app.main_worker"]
+
+  tests:
+    profiles: ["test"]
+    build:
+      context: .
+      target: test
+    environment:
+      ENGINE: mock
+      PAYMENT_PROVIDER: stub
+      DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://user:pass@postgres:5432/facechanger}
+    volumes:
+      - ./reports:/app/reports
+      - ./app:/app/app
+      - ./tests:/app/tests
+      - ./pyproject.toml:/app/pyproject.toml
+    command:
+      - pytest
+      - -q
+      - --html=reports/report.html
+      - --self-contained-html
+
+volumes:
+  postgres_data:

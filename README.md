@@ -29,6 +29,33 @@ Telegram-бот: пользователь присылает фото, бот в
 - [`privacy-retention`](openspec/changes/mvp-001-core-flow/specs/privacy-retention/spec.md) — удаление фото, логи без PII
 - [`ops`](openspec/changes/mvp-001-core-flow/specs/ops/spec.md) — админка, гейты, алерты
 
+## Команды
+
+Всё выполняется в контейнерах — на хосте не нужны ни Python, ни ffmpeg, ни make.
+
+```powershell
+.\tasks.cmd up        # поднять postgres, bot, worker
+.\tasks.cmd migrate   # одноразовая джоба: alembic upgrade head
+.\tasks.cmd test      # тесты + HTML-отчёт в reports/
+.\tasks.cmd lint      # ruff check + format --check
+.\tasks.cmd down      # остановить
+```
+
+`tasks.cmd` — тонкий шим над `tasks.ps1`: нужен потому, что на Windows
+PowerShell по умолчанию запрещает запуск `.ps1`. Если политика у вас
+разрешена, можно вызывать `.\tasks.ps1` напрямую.
+
+Без обёртки то же самое:
+
+```bash
+docker compose up -d --build
+docker compose --profile tools run --rm migrate
+docker compose --profile test run --rm tests
+```
+
+Миграции — отдельной одноразовой джобой (`migrate`, профиль `tools`), а не в
+entrypoint приложения: при нескольких репликах они бы выполнялись параллельно.
+
 ## С чего начать
 
 1. Прочитать `docs/implementation-plan.md` — этап 0.
