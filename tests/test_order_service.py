@@ -12,10 +12,13 @@ from app.domain.order_service import (
     IllegalTransition,
     Order,
     OrderStatus,
+    PaymentRef,
+    attach_payment,
     deliver,
     enqueue,
     fail,
     is_active,
+    is_awaiting_photo,
     mark_refunded,
     pay,
     purge,
@@ -162,6 +165,18 @@ def test_purge_removes_delivered_order() -> None:
 @pytest.mark.parametrize("status", list(OrderStatus))
 def test_is_active_only_for_paid_queue_running(status: OrderStatus) -> None:
     assert is_active(make_order(status)) is (status in ACTIVE_STATUSES)
+
+
+def test_photo_is_accepted_only_for_paid_order() -> None:
+    assert is_awaiting_photo(make_order(OrderStatus.PAID)) is True
+    assert is_awaiting_photo(make_order(OrderStatus.QUEUED)) is False
+
+
+def test_attach_payment_records_provider_and_id() -> None:
+    paid = make_order(OrderStatus.PAID)
+    attached = attach_payment(paid, PaymentRef("stub", "stub-1"))
+    assert attached.payment_provider == "stub"
+    assert attached.payment_id == "stub-1"
 
 
 def test_active_statuses_match_specification() -> None:

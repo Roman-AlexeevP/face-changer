@@ -1,35 +1,43 @@
-"""Точка сборки бота: только заглушка /start."""
+"""Точка сборки бота: роутеры, middleware, хранилище и оплата."""
 
 import asyncio
 import sys
 
 from aiogram import Bot, Dispatcher
-from aiogram.filters import CommandStart
-from aiogram.types import Message
 
-from app.config import ConfigError, load_settings, require_bot_token
+from app.bot.handlers import checkout, start, upload
+from app.bot.middlewares.dedupe import DedupeMiddleware
+from app.bot.middlewares.throttle import ThrottleMiddleware
+from app.bot.services import BotServices, build_bot_services
+from app.config import ConfigError, Settings, load_settings, require_bot_token
+from app.db.seed import seed_default_template
+from app.db.session import build_engine, build_session_factory
 from app.obs.logs import configure_logging
 
-DEVELOPMENT_MESSAGE = "Сервис в разработке"
 
-
-async def reply_development(message: Message) -> None:
-    await message.answer(DEVELOPMENT_MESSAGE)
-
-
-def build_dispatcher() -> Dispatcher:
+def build_dispatcher(services: BotServices | None = None) -> Dispatcher:
+    """Регистрирует хендлеры и middleware; сервисы передаются в data диспетчера."""
     dispatcher = Dispatcher()
-    dispatcher.message.register(reply_development, CommandStart())
+    dispatcher.update.outer_middleware(DedupeMiddleware())
+    dispatcher.update.outer_middleware(ThrottleMiddleware())
+    dispatcher.include_router(start.build_router())
+    dispatcher.include_router(checkout.build_router())
+    dispatcher.include_router(upload.build_router())
+    dispatcher["services"] = services
     return dispatcher
 
 
-async def run_bot(token: str) -> None:
+async def run_bot(settings: Settings, token: str) -> None:
+    db_engine = build_engine(settings.database_url)
+    session_factory = build_session_factory(db_engine)
     bot = Bot(token=token)
-    dispatcher = build_dispatcher()
     try:
+        await seed_default_template(session_factory, settings)
+        dispatcher = build_dispatcher(build_bot_services(settings, session_factory))
         await dispatcher.start_polling(bot)
     finally:
         await bot.session.close()
+        await db_engine.dispose()
 
 
 def main() -> None:
@@ -40,7 +48,7 @@ def main() -> None:
         print(error, file=sys.stderr)
         raise SystemExit(2) from error
     configure_logging(settings.log_level)
-    asyncio.run(run_bot(token))
+    asyncio.run(run_bot(settings, token))
 
 
 if __name__ == "__main__":

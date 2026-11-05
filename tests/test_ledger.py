@@ -15,6 +15,7 @@ from app.domain.ledger import (
     calculate_balance,
     debit,
     refund,
+    top_up,
 )
 from app.domain.order_service import Order, OrderStatus
 from app.domain.result import Err, Ok
@@ -47,6 +48,16 @@ def test_debit_returns_charge_entry() -> None:
     assert debit(make_order(), []) == Ok(
         LedgerEntry(user_id=10, delta=-2, reason=LedgerReason.ORDER_PAID, order_id=1)
     )
+
+
+def test_top_up_returns_positive_entry() -> None:
+    assert top_up(make_order()) == Ok(
+        LedgerEntry(user_id=10, delta=2, reason=LedgerReason.TOPUP, order_id=1)
+    )
+
+
+def test_top_up_rejects_non_positive_credits() -> None:
+    assert top_up(make_order(credits_cost=0)) == Err(InvalidAmount(0))
 
 
 def test_debit_is_not_an_io_operation() -> None:

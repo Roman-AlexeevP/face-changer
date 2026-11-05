@@ -49,6 +49,14 @@ class AlreadyPaid:
 
 
 @dataclass(frozen=True)
+class PaymentRef:
+    """Идентификаторы платежа, привязанного к заказу."""
+
+    provider: str
+    payment_id: str
+
+
+@dataclass(frozen=True)
 class IllegalTransition:
     """Переход не разрешён таблицей TRANSITIONS."""
 
@@ -96,6 +104,15 @@ def pay(order: Order, now: datetime) -> Result[Order, OrderError]:
     return transition(order, OrderStatus.PAID, now)
 
 
+def attach_payment(order: Order, payment: PaymentRef) -> Order:
+    """Записывает в заказ провайдера и идентификатор платежа."""
+    return replace(
+        order,
+        payment_provider=payment.provider,
+        payment_id=payment.payment_id,
+    )
+
+
 def enqueue(order: Order, now: datetime) -> Result[Order, OrderError]:
     """Постановка в очередь после приёма фото: paid → queued."""
     return transition(order, OrderStatus.QUEUED, now)
@@ -134,6 +151,11 @@ def purge(order: Order, now: datetime) -> Result[Order, OrderError]:
 def is_active(order: Order) -> bool:
     """Заказ активен в paid/queued/running: второй заказ создавать нельзя."""
     return order.status in ACTIVE_STATUSES
+
+
+def is_awaiting_photo(order: Order) -> bool:
+    """Заказ оплачен и ждёт фото: только в этом состоянии фото принимается."""
+    return order.status is OrderStatus.PAID
 
 
 def _stamp(order: Order, target: OrderStatus, now: datetime) -> Order:

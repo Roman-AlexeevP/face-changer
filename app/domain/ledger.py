@@ -11,6 +11,7 @@ from app.domain.result import Err, Ok, Result
 class LedgerReason(StrEnum):
     """Причины записей ledger из спецификации billing."""
 
+    TOPUP = "topup"
     ORDER_PAID = "order_paid"
     REFUND = "refund"
 
@@ -57,6 +58,20 @@ class OrderNotRefundable:
 type LedgerError = InvalidAmount | AlreadyCharged | AlreadyRefunded | OrderNotRefundable
 
 REFUNDABLE_STATUSES: frozenset[OrderStatus] = frozenset({OrderStatus.FAILED, OrderStatus.REJECTED})
+
+
+def top_up(order: Order) -> Result[LedgerEntry, LedgerError]:
+    """Возвращает запись пополнения кредитов на стоимость оплаченного заказа."""
+    if order.credits_cost <= 0:
+        return Err(InvalidAmount(order.credits_cost))
+    return Ok(
+        LedgerEntry(
+            user_id=order.user_id,
+            delta=order.credits_cost,
+            reason=LedgerReason.TOPUP,
+            order_id=order.id,
+        )
+    )
 
 
 def debit(order: Order, entries: Sequence[LedgerEntry]) -> Result[LedgerEntry, LedgerError]:

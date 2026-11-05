@@ -1,6 +1,5 @@
-"""Тесты проверки фото: лимиты, перекодирование, EXIF и «одно лицо»."""
+"""Тесты проверки фото: лимиты, перекодирование и EXIF без детекции лиц."""
 
-from dataclasses import dataclass
 from io import BytesIO
 
 import pytest
@@ -13,25 +12,12 @@ from app.domain.moderation import (
     CorruptedImage,
     FileTooLarge,
     ImageTooLarge,
-    MultipleFaces,
-    NoFace,
     PhotoPolicy,
-    StubFaceDetector,
     UnsupportedFormat,
     prepare_photo,
     validate_photo,
 )
 from app.domain.result import Err, Ok
-
-
-@dataclass(frozen=True)
-class FakeFaceDetector:
-    """Детектор с заранее заданным ответом."""
-
-    faces: int | None
-
-    def count_faces(self, image: bytes) -> int | None:
-        return self.faces
 
 
 def encode(image: Image.Image, image_format: str = "JPEG", exif: bytes | None = None) -> bytes:
@@ -105,13 +91,9 @@ def test_default_policy_matches_requirements() -> None:
     assert "JPEG" in ALLOWED_FORMATS
 
 
-def test_stub_face_detector_returns_unknown() -> None:
-    assert StubFaceDetector().count_faces(photo_bytes()) is None
-
-
-def test_unknown_face_count_is_allowed() -> None:
-    """Политика MVP: пока детектора нет, «неизвестно» не блокирует фото."""
-    result = validate_photo(photo_bytes(), StubFaceDetector())
+def test_validate_photo_accepts_image_without_face_check() -> None:
+    """Модерация лиц снята: валидное фото принимается без анализа лиц."""
+    result = validate_photo(photo_bytes())
     match result:
         case Ok(photo):
             assert (photo.width, photo.height) == (64, 48)
@@ -119,14 +101,5 @@ def test_unknown_face_count_is_allowed() -> None:
             pytest.fail(f"неожиданная ошибка: {error}")
 
 
-def test_exactly_one_face_is_allowed() -> None:
-    result = validate_photo(photo_bytes(), FakeFaceDetector(faces=1))
-    assert isinstance(result, Ok)
-
-
-def test_no_face_is_rejected() -> None:
-    assert validate_photo(photo_bytes(), FakeFaceDetector(faces=0)) == Err(NoFace())
-
-
-def test_multiple_faces_are_rejected() -> None:
-    assert validate_photo(photo_bytes(), FakeFaceDetector(faces=2)) == Err(MultipleFaces(2))
+def test_validate_photo_rejects_not_an_image() -> None:
+    assert validate_photo(b"not an image") == Err(CorruptedImage())

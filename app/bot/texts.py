@@ -1,0 +1,97 @@
+"""Все пользовательские тексты бота в одном месте: без технических кодов."""
+
+from types import MappingProxyType
+
+from app.domain.moderation import (
+    CorruptedImage,
+    FileTooLarge,
+    ImageTooLarge,
+    PhotoError,
+    UnsupportedFormat,
+)
+
+CONSENT_TEXT = (
+    "Это бот, который вставляет ваше лицо в короткое видео.\n\n"
+    "Правила простые:\n"
+    "• 18+ — сервисом пользуются только совершеннолетние.\n"
+    "• Принимается только своё лицо: не загружайте чужие фото.\n"
+    "• Если на фото есть третьи лица, ответственность за их согласие несёте вы.\n\n"
+    "Нажимая «Принимаю», вы подтверждаете эти правила и согласие на обработку "
+    "фотографии для генерации."
+)
+CONSENT_BUTTON = "Принимаю"
+CONSENT_ACCEPTED = "Согласие сохранено. Можно оформить заказ."
+CONSENT_REQUIRED = "Сначала подтвердите правила — без согласия фото не принимаю."
+
+PHOTO_REQUEST = (
+    "Оплата прошла. Пришлите одно фото анфас: лицо по центру, без очков и сильных "
+    "теней. Фото нужно только для этой генерации и потом удаляется."
+)
+PHOTO_ACCEPTED = "Принято, вернусь с видео. Обычно это занимает 1–3 минуты."
+PHOTO_REQUIRED = "Нужно фото: пришлите изображение файлом или фотографией."
+PHOTO_NOT_IMAGE = "Это не изображение. Пришлите фото в формате JPEG, PNG или WEBP."
+ACTIVE_ORDER = "У вас уже есть заказ в работе. Дождитесь видео — я пришлю его сюда."
+NO_ACTIVE_ORDER = "Сначала оформите заказ: нажмите «Оплатить» в сообщении выше."
+NO_TEMPLATE = "Шаблоны временно недоступны. Попробуйте позже."
+TECH_WORKS = "Сейчас технические работы: новые заказы временно не принимаются."
+STORAGE_ERROR = "Не удалось сохранить фото. Попробуйте отправить его ещё раз."
+PAYMENT_FAILED = "Оплата не прошла. Попробуйте ещё раз через минуту."
+THROTTLE = "Слишком часто. Подождите пару секунд и повторите."
+UNKNOWN_COMMAND = "Я понимаю «/start» и фотографии. Начните с «/start»."
+
+VIDEO_CAPTION = "Готово! Ваше видео выше."
+AGAIN_BUTTON = "Ещё раз"
+AGAIN_HINT = "Для новой генерации пришлите новое фото: старое уже удалено."
+AGAIN_REQUEST = "Хорошо, оформил новый заказ. Пришлите новое фото — прошлое уже удалено."
+
+GENERIC_FAILURE = "Не получилось сделать видео. Кредит за заказ вернул."
+FAILURE_TEXTS = MappingProxyType(
+    {
+        "engine_unavailable": "Генерация временно недоступна. Кредит за заказ вернул.",
+        "engine_failed": "Движок не смог сделать видео. Кредит за заказ вернул.",
+        "template_missing": "Шаблон временно недоступен. Кредит за заказ вернул.",
+        "delivery_failed": "Не удалось отправить видео. Кредит за заказ вернул.",
+    }
+)
+
+
+def format_price(kopecks: int) -> str:
+    """Показывает цену в рублях без лишних нулей после запятой."""
+    rubles, cents = divmod(kopecks, 100)
+    if cents == 0:
+        return f"{rubles} ₽"
+    return f"{rubles},{cents:02d} ₽"
+
+
+def pay_button_text(kopecks: int) -> str:
+    return f"Оплатить {format_price(kopecks)}"
+
+
+def checkout_text(title: str, price_kopecks: int, duration_sec: int) -> str:
+    """Экран перед оплатой: что получит пользователь и сколько это стоит."""
+    return (
+        f"Шаблон: {title}\n"
+        f"Длительность: {duration_sec} сек.\n"
+        f"Цена: {format_price(price_kopecks)}\n\n"
+        "Нажмите «Оплатить», и я попрошу фото."
+    )
+
+
+def refusal_text(error: PhotoError) -> str:
+    """Человеческая причина отказа без кодов и идентификаторов."""
+    match error:
+        case FileTooLarge():
+            return "Фото больше 20 МБ. Пришлите файл поменьше."
+        case UnsupportedFormat(format=image_format):
+            return f"Формат {image_format or 'файла'} не подходит. Нужен JPEG, PNG или WEBP."
+        case ImageTooLarge():
+            return "Слишком большая картинка: сторона должна быть не больше 4096 px."
+        case CorruptedImage():
+            return "Файл повреждён или это не изображение. Пришлите другое фото."
+        case _:
+            return PHOTO_REQUIRED
+
+
+def failure_text(error_code: str) -> str:
+    """Текст об ошибке воркера; по умолчанию обещает возврат кредита."""
+    return FAILURE_TEXTS.get(error_code, GENERIC_FAILURE)

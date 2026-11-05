@@ -44,6 +44,7 @@ class Settings(BaseSettings):
     sales_enabled: bool = True
     job_timeout_min: int = 8
     job_stale_minutes: int = 12
+    worker_concurrency: int = 2
 
     storage: Literal["local", "s3"] = "local"
     storage_dir: Path = Path("/data/tmp")
