@@ -53,7 +53,12 @@ def expected_order(order: Order, target: OrderStatus) -> Order:
 
 
 def legal_pairs() -> list[tuple[OrderStatus, OrderStatus]]:
-    return [(source, target) for source in OrderStatus for target in TRANSITIONS[source]]
+    """Пары сортированы: frozenset не даёт стабильного порядка между процессами."""
+    return [
+        (source, target)
+        for source in OrderStatus
+        for target in sorted(TRANSITIONS[source], key=lambda status: status.value)
+    ]
 
 
 def illegal_pairs() -> list[tuple[OrderStatus, OrderStatus]]:

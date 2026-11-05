@@ -66,6 +66,24 @@ services:
     stop_grace_period: 30s
     command: ["python", "-m", "app.main_worker"]
 
+  # Отдельная база под тесты: tmpfs, чтобы не писать на диск и стартовать быстро.
+  postgres-test:
+    profiles: ["test"]
+    image: postgres:16
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: pass
+      POSTGRES_DB: facechanger_test
+    ports:
+      - "5433:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d facechanger_test"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+
   tests:
     profiles: ["test"]
     build:
@@ -74,7 +92,12 @@ services:
     environment:
       ENGINE: mock
       PAYMENT_PROVIDER: stub
+      PYTHONHASHSEED: "0"
       DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://user:pass@postgres:5432/facechanger}
+      TEST_DATABASE_URL: postgresql+asyncpg://user:pass@postgres-test:5432/facechanger_test
+    depends_on:
+      postgres-test:
+        condition: service_healthy
     volumes:
       - ./reports:/app/reports
       - ./app:/app/app
@@ -83,6 +106,11 @@ services:
     command:
       - pytest
       - -q
+      - -n
+      - auto
+      - --cov=app
+      - --cov-report=term-missing
+      - --cov-report=html:reports/coverage
       - --html=reports/report.html
       - --self-contained-html
 
