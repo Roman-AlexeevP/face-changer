@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Секреты
+.env
+.env.*
+!.env.example
+
+# Данные и временные медиа
+/data/
+/tmp/
+*.log
+
+# Кэш инструментов
+.npm-cache/
+node_modules/
+
+# ОС и IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
