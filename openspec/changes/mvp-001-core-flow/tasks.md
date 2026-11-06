@@ -56,12 +56,12 @@
 
 ## 5. Реальный движок
 
-- [ ] 5.1 `engines/higgsfield.py`: auth, upload, submit, poll, маппинг ошибок
-- [ ] 5.2 `ensure_asset` + кэш `templates.engine_video_url`
-- [ ] 5.3 Маппинг в `timeout/moderated/no_credits/engine_5xx/network/bad_input`
-- [ ] 5.4 Обработка `no_credits`: остановка продаж + алерт
-- [ ] 5.5 `engines/base.py` фикстуры ответов для тестов
-- [ ] 5.6 Один реальный заказ end-to-end
+- [x] 5.1 `engines/higgsfield.py`: auth, upload, submit, poll, маппинг ошибок
+- [x] 5.2 `ensure_asset` + кэш URL видео шаблона по `template_key`
+- [x] 5.3 Маппинг в `timeout/moderated/no_credits/engine_5xx/network/bad_input`
+- [~] 5.4 Обработка `no_credits`: движок различает, остановка продаж — блок 7
+- [x] 5.5 Фикстуры ответов движка (`httpx.MockTransport`), 13 тестов
+- [ ] 5.6 Один реальный заказ end-to-end (нужны ключи, `HF_MODEL`, шаблон)
 
 ## 6. Доставка и медиа
 
