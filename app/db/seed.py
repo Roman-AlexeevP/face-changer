@@ -1,5 +1,7 @@
 """Сид дефолтного шаблона: без него сценарий заказа не стартует."""
 
+from pathlib import Path
+
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.config import Settings
@@ -12,6 +14,17 @@ DEFAULT_SOURCE_PATH = "templates/default/source.mp4"
 DEFAULT_DURATION_SEC = 5
 DEFAULT_RESOLUTION = "720p"
 
+# Промпт можно положить текстом рядом с видео — без правки кода и пересборки.
+PROMPT_FILE = Path("templates/default/prompt.txt")
+
+
+def resolve_prompt(default: str) -> str:
+    """Читает промпт из файла шаблона; пустой или отсутствующий — берёт default."""
+    if not PROMPT_FILE.is_file():
+        return default
+    text = PROMPT_FILE.read_text(encoding="utf-8").strip()
+    return text or default
+
 
 def build_default_template(settings: Settings) -> models.Template:
     """Собирает единственный шаблон MVP из цен в настройках."""
@@ -19,7 +32,7 @@ def build_default_template(settings: Settings) -> models.Template:
         key=DEFAULT_TEMPLATE_KEY,
         title=DEFAULT_TITLE,
         source_path=DEFAULT_SOURCE_PATH,
-        prompt=DEFAULT_PROMPT,
+        prompt=resolve_prompt(DEFAULT_PROMPT),
         engine_model=settings.hf_model or None,
         duration_sec=DEFAULT_DURATION_SEC,
         resolution=DEFAULT_RESOLUTION,
