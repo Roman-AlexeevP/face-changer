@@ -34,6 +34,8 @@ class Settings(BaseSettings):
     hf_key_secret: SecretStr | None = None
     hf_base_url: str = "https://api.higgsfield.ai"
     hf_model: str = ""
+    hf_upload_url: str = ""
+    hf_timeout_sec: float = 30.0
     hf_poll_interval_sec: int = 3
     hf_poll_max_min: int = 8
 

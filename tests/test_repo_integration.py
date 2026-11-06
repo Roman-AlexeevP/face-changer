@@ -1,6 +1,6 @@
 """Интеграционные тесты слоя данных на реальном PostgreSQL."""
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,6 +12,10 @@ from app.domain.result import Ok
 pytestmark = pytest.mark.integration
 
 NOW = datetime(2026, 11, 6, tzinfo=UTC)
+# claim_job сравнивает next_attempt_at с переданным временем, а колонка
+# заполняется серверным now(): берём заведомо будущий момент, иначе тест
+# зависит от календарной даты запуска.
+CLAIM_AT = datetime.now(UTC) + timedelta(minutes=1)
 
 
 def build_template() -> models.Template:
@@ -66,11 +70,11 @@ async def test_claim_job_takes_job_only_once(session: AsyncSession) -> None:
     order = await repo.create_order(session, repo.NewOrder(user.id, template))
     await repo.create_job(session, repo.JobRequest(order.id, "mock", f"{order.id}:1"))
 
-    claimed = await repo.claim_job(session, NOW)
+    claimed = await repo.claim_job(session, CLAIM_AT)
 
     assert claimed is not None
     assert claimed.order_id == order.id
-    assert await repo.claim_job(session, NOW) is None
+    assert await repo.claim_job(session, CLAIM_AT) is None
 
 
 async def test_ledger_entries_sum_to_zero_after_charge(session: AsyncSession) -> None:

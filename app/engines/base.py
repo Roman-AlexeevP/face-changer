@@ -57,6 +57,30 @@ class EngineFailed(EngineError):
     code = "engine_failed"
 
 
+class EngineAuthError(EngineError):
+    """Движок отклонил ключи доступа (HTTP 401/403)."""
+
+    code = "engine_auth"
+
+
+class EngineNoCredits(EngineError):
+    """На счёте движка закончились кредиты (HTTP 402)."""
+
+    code = "no_credits"
+
+
+class EngineInputRejected(EngineError):
+    """Движок отклонил входные данные: фото, промпт или параметры (HTTP 400/422)."""
+
+    code = "bad_input"
+
+
+class EngineBadConfig(EngineError):
+    """Модель или адрес загрузки медиа заданы неверно (HTTP 404, пустой HF_MODEL)."""
+
+    code = "engine_bad_config"
+
+
 class VideoEngine(Protocol):
     """Порт генерации: mock отвечает сразу, реальный движок — через poll."""
 
