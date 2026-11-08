@@ -10,7 +10,7 @@
 
 ## Phases
 
-- [ ] **Phase 1: Сквозной сценарий на заглушках** — весь путь в Telegram на
+- [x] **Phase 1: Сквозной сценарий на заглушках** — весь путь в Telegram на
   `ENGINE=mock`, E2E-тест, `request_id`/retry/watchdog, матрица ошибок.
 - [ ] **Phase 2: Живой Higgsfield** — контракт, probe, один реальный заказ.
 - [ ] **Phase 3: Нормализация и доставка** — 720p/H.264/faststart, `file_id`,
@@ -152,9 +152,17 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Сквозной сценарий на заглушках | 4/4 | In progress | - |
+| 1. Сквозной сценарий на заглушках | 4/4 | Complete | 2026-11-08 |
 | 2. Живой Higgsfield | 0/3 | Not started | - |
 | 3. Нормализация и доставка | 0/3 | Not started | - |
 | 4. Лимиты и админка | 0/4 | Not started | - |
 | 5. ЮKassa | 0/3 | Not started | - |
 | 6. Тесты, CI и документация | 0/3 | Not started | - |
+
+## Backlog / v2
+
+- [ ] **«Ещё раз»: каталог заново, затем оплата** — сейчас кнопка сразу
+  создаёт заказ и проводит stub-оплату; нужно показать каталог/шаблон,
+  превью и цену, и только потом создавать заказ и оплачивать. См.
+  [`.planning/todos/pending/2026-11-08-again-catalog.md`](.planning/todos/pending/2026-11-08-again-catalog.md)
+  и `ENTRY-V2-01`. Phase 2 не начинать до отдельного решения.
