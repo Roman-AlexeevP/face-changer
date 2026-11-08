@@ -46,7 +46,7 @@
 Plans:
 - [x] 01-01: E2E на заглушках в Telegram и aiogram test-client
 - [x] 01-02: `request_id`, resume, retry и watchdog
-- [ ] 01-03: матрица ошибок, ledger и удаление фото
+- [x] 01-03: матрица ошибок, ledger и удаление фото
 - [ ] 01-04: проверка, docs, коммит
 
 ### Phase 2: Живой Higgsfield
@@ -152,7 +152,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Сквозной сценарий на заглушках | 2/4 | In progress | - |
+| 1. Сквозной сценарий на заглушках | 3/4 | In progress | - |
 | 2. Живой Higgsfield | 0/3 | Not started | - |
 | 3. Нормализация и доставка | 0/3 | Not started | - |
 | 4. Лимиты и админка | 0/4 | Not started | - |
