@@ -1,12 +1,12 @@
 ---
 gsd_state_version: '1.0'
-status: planning
+status: executing
 progress:
   total_phases: 6
   completed_phases: 0
   total_plans: 20
-  completed_plans: 0
-  percent: 0
+  completed_plans: 1
+  percent: 5
 ---
 
 # Project State
@@ -23,28 +23,28 @@ See: .planning/PROJECT.md (updated 2026-11-08)
 ## Current Position
 
 Phase: 1 of 6 (Сквозной сценарий на заглушках)
-Plan: 0 of 4 in current phase
-Status: Ready to plan
-Last activity: 2026-11-08 — GSD init, REQUIREMENTS, ROADMAP, OpenSpec archive,
-BOM в `tasks.ps1`; остановились до плана фазы 1.
+Plan: 1 of 4 in current phase
+Status: In progress
+Last activity: 2026-11-08 — 01-01 завершён: E2E на заглушках, 207 тестов,
+покрытие 76%, lint чистый.
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [█░░░░░░░░░] 5%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 0
-- Average duration: —
-- Total execution time: 0 hours
+- Total plans completed: 1
+- Average duration: 15 min
+- Total execution time: 0.25 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| - | - | - | - |
+| 1. Сквозной сценарий | 1/4 | 15 min | 15 min |
 
 **Recent Trend:**
-- Last 5 plans: —
+- Last 5 plans: 15 min
 - Trend: Stable
 
 ## Accumulated Context
@@ -52,24 +52,28 @@ Progress: [░░░░░░░░░░] 0%
 ### Decisions
 
 - Phase 1: mock-first — ключей Higgsfield нет, сначала весь путь на заглушках.
+- E2E: настоящий `Dispatcher` + `feed_update`, фейковая `BaseSession`, реальная
+  PostgreSQL; `session_factory` поверх транзакции теста.
 - v1: бесплатного реролла нет; «Ещё раз» создаёт новый оплаченный заказ.
 - `no_credits` — `failed` + `error_code=no_credits`, пауза продаж 60 минут.
-- `tasks.ps1` сохранён в UTF-8 с BOM; `.\tasks.cmd test` снова работает.
+- `tasks.ps1` сохранён в UTF-8 с BOM; `.\tasks.cmd test` работает.
 - OpenSpec переведён в `docs/archive/openspec/`; действующий процесс — GSD.
 
 ### Pending Todos
 
-- Просмотреть `.planning/REQUIREMENTS.md` и `.planning/ROADMAP.md` перед фазой 1.
-- Спланировать фазу 1: `gsd-discuss-phase 1` → `gsd-plan-phase 1`.
+- 01-02: `request_id`, resume, retry 2/5/15, timeout, watchdog.
+- 01-03: матрица ошибок, ledger и удаление фото в ветках отказа.
+- 01-04: полная проверка и docs.
 
 ### Blockers/Concerns
 
 - Phase 2 (живой Higgsfield) заблокирована: `HF_KEY_ID`, `HF_KEY_SECRET`,
   `HF_MODEL` пусты; нет `templates/default/source.mp4` и `prompt.txt`.
-- `.planning/codebase/` имеет штамп `8cdc2ab`, HEAD `38518a3` — карту нужно
+- `.planning/codebase/` имеет штамп `8cdc2ab`, HEAD ушёл вперёд — карту нужно
   перештамповать после фазы 1.
 - Именованные GSD-субагенты не установлены; research/roadmap — inline.
-- Рабочее дерево не закоммичено: изменения лежат в working tree.
+- `MockVideoEngine` не возвращает `request_id`; resume проверяется в 01-02
+  фейковым движком.
 
 ## Deferred Items
 
@@ -79,6 +83,6 @@ Progress: [░░░░░░░░░░] 0%
 
 ## Session Continuity
 
-Last session: 2026-11-08 18:40
-Stopped at: after ROADMAP.md; before phase 1 plan
-Resume file: .planning/.continue-here.md
+Last session: 2026-11-08 20:20
+Stopped at: Phase 1 plan 01-01 complete; next — 01-02
+Resume file: .planning/phases/FC-01-skvoznoy-stsenariy-na-zaglushkah/01-01-SUMMARY.md
