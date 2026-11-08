@@ -200,6 +200,7 @@ def build_template() -> models.Template:
         credits_cost=1,
         price_kopecks=100,
         is_active=True,
+        is_default=True,
     )
 
 
@@ -233,6 +234,8 @@ async def test_mock_scenario_end_to_end(
 
     user = await repo.get_user_by_tg_id(session, USER.id)
     assert user is not None
+    assert user.consent_version == "v1"
+    assert user.consent_at == NOW
     order = await repo.get_active_order(session, user.id)
     assert order is not None
     assert order.status is OrderStatus.PAID
@@ -294,6 +297,8 @@ async def test_queue_failure_deletes_photo(
     await env.dispatcher.feed_update(env.bot, callback(3, keyboards.CHECKOUT_CALLBACK))
     user = await repo.get_user_by_tg_id(session, USER.id)
     assert user is not None
+    assert user.consent_version == "v1"
+    assert user.consent_at == NOW
     order = await repo.get_active_order(session, user.id)
     assert order is not None
 

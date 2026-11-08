@@ -70,20 +70,32 @@ async def record_consent(session: AsyncSession, user: models.User, consent: Cons
 async def get_default_template(session: AsyncSession) -> models.Template | None:
     statement = (
         select(models.Template)
-        .where(models.Template.is_active.is_(True))
+        .where(
+            models.Template.is_active.is_(True),
+            models.Template.is_default.is_(True),
+        )
         .order_by(models.Template.id)
         .limit(1)
     )
     return (await session.execute(statement)).scalar_one_or_none()
 
 
+async def get_template_by_key(session: AsyncSession, key: str) -> models.Template | None:
+    statement = select(models.Template).where(models.Template.key == key)
+    return (await session.execute(statement)).scalar_one_or_none()
+
+
+async def count_default_templates(session: AsyncSession) -> int:
+    statement = (
+        select(func.count())
+        .select_from(models.Template)
+        .where(models.Template.is_default.is_(True))
+    )
+    return int((await session.execute(statement)).scalar_one())
+
+
 async def load_template(session: AsyncSession, template_id: int) -> models.Template | None:
     return await session.get(models.Template, template_id)
-
-
-async def count_templates(session: AsyncSession) -> int:
-    statement = select(func.count()).select_from(models.Template)
-    return int((await session.execute(statement)).scalar_one())
 
 
 async def read_flag(session: AsyncSession, name: str) -> sales.Flag | None:

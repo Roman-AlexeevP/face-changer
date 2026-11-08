@@ -64,6 +64,7 @@ class Template(Base):
     credits_cost: Mapped[int] = mapped_column(Integer, nullable=False)
     price_kopecks: Mapped[int] = mapped_column(Integer, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
+    is_default: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
     engine_video_url: Mapped[str | None] = mapped_column(Text)
     engine_video_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 

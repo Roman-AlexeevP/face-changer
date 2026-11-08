@@ -1,10 +1,10 @@
-"""Сид дефолтного шаблона: без него сценарий заказа не стартует."""
+"""Сид дефолтного шаблона: upsert по key и один шаблон по умолчанию."""
 
 from pathlib import Path
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from app.config import Settings
+from app.config import ConfigError, Settings
 from app.db import models, repo
 
 DEFAULT_TEMPLATE_KEY = "default"
@@ -26,9 +26,9 @@ def resolve_prompt(default: str) -> str:
     return text or default
 
 
-def build_default_template(settings: Settings) -> models.Template:
+def build_default_template(settings: Settings, *, is_default: bool = True) -> models.Template:
     """Собирает единственный шаблон MVP из цен в настройках."""
-    return models.Template(
+    template = models.Template(
         key=DEFAULT_TEMPLATE_KEY,
         title=DEFAULT_TITLE,
         source_path=DEFAULT_SOURCE_PATH,
@@ -40,14 +40,38 @@ def build_default_template(settings: Settings) -> models.Template:
         price_kopecks=settings.price_kopecks,
         is_active=True,
     )
+    template.is_default = is_default
+    return template
+
+
+def apply_default_template(
+    template: models.Template, settings: Settings, *, is_default: bool
+) -> None:
+    """Обновляет существующий шаблон из файла и настроек без пересоздания."""
+    template.title = DEFAULT_TITLE
+    template.source_path = DEFAULT_SOURCE_PATH
+    template.prompt = resolve_prompt(DEFAULT_PROMPT)
+    template.engine_model = settings.hf_model or None
+    template.duration_sec = DEFAULT_DURATION_SEC
+    template.resolution = DEFAULT_RESOLUTION
+    template.credits_cost = settings.credits_per_order
+    template.price_kopecks = settings.price_kopecks
+    template.is_active = True
+    if is_default:
+        template.is_default = True
 
 
 async def seed_default_template(
     session_factory: async_sessionmaker[AsyncSession], settings: Settings
 ) -> None:
-    """Вставляет шаблон, только если таблица шаблонов пуста."""
+    """Upsert шаблона: правка prompt.txt применяется при следующем старте."""
     async with session_factory() as session:
-        if await repo.count_templates(session) > 0:
-            return
-        session.add(build_default_template(settings))
+        defaults = await repo.count_default_templates(session)
+        if defaults > 1:
+            raise ConfigError("Найдено больше одного шаблона is_default: исправьте данные.")
+        template = await repo.get_template_by_key(session, DEFAULT_TEMPLATE_KEY)
+        if template is None:
+            session.add(build_default_template(settings, is_default=defaults == 0))
+        else:
+            apply_default_template(template, settings, is_default=defaults == 0)
         await session.commit()

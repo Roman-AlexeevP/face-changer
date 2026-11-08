@@ -26,6 +26,7 @@ EXPECTED_COLUMNS = {
         "credits_cost",
         "price_kopecks",
         "is_active",
+        "is_default",
         "engine_video_url",
         "engine_video_at",
     },
