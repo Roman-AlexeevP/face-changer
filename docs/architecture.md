@@ -52,14 +52,13 @@
 4  оплата (stub)         → order.status=paid, ledger(+1 кредит)
 5  фото                  → валидация → storage → order.status=queued + job(status=new)
 6  worker: pick          → job.status=running
-7  ensure_asset          → templates.engine_video_url (кэш)
-8  upload фото           → storage/движок возвращает URL
-9  submit                → job.request_id, job.status=submitted
-10 poll (2s → 10s)       → до терминального статуса или таймаута
-11 download              → storage (tmp)
-12 normalize             → ffmpeg 720p H.264, ≤20 МБ
-13 sendVideo             → order.status=delivered, job.status=done
-14 cleanup               → удалить фото и tmp-файлы
+7  generate              → ensure video asset, upload фото, submit → request_id
+8  request_id            → jobs.request_id сразу после submit; job.status=running
+9  poll (2s → 10s)       → до терминального статуса или таймаута
+10 download              → storage (tmp, фаза 3)
+11 normalize             → ffmpeg 720p H.264, ≤20 МБ (фаза 3)
+12 sendVideo             → order.status=delivered, job.status=done
+13 cleanup               → удалить фото и tmp-файлы
 ```
 
 ### 3.2. Путь отказа
@@ -93,6 +92,7 @@ class JobSpec:
     duration_sec: int
     resolution: str
     idempotency_key: str        # f"{order_id}:{attempt}"
+    request_id: str | None = None  # resume polling без нового submit
 
 @dataclass(frozen=True)
 class EngineResult:
@@ -101,18 +101,19 @@ class EngineResult:
     error_code: str | None
     raw: dict | None
 
+type SubmitHook = Callable[[str], Awaitable[None]]
+
 class VideoEngine(Protocol):
-    async def ensure_asset(self, local_path: Path) -> str: ...
-    async def submit(self, spec: JobSpec) -> str: ...
-    async def poll(self, request_id: str) -> EngineResult: ...
-    async def cancel(self, request_id: str) -> None: ...
+    async def generate(
+        self, spec: JobSpec, *, on_submit: SubmitHook | None = None
+    ) -> EngineResult: ...
 ```
 
 ```python
 # payments/base.py
 class PaymentProvider(Protocol):
-    async def create_invoice(self, order: Order) -> str: ...
-    async def handle_update(self, payload: dict) -> PaymentEvent | None: ...
+    name: str
+    async def create_invoice(self, order: Order) -> Invoice: ...
     async def refund(self, payment_id: str) -> None: ...
 ```
 
@@ -126,7 +127,7 @@ users      id, tg_id UNIQUE, created_at, is_banned,
            consent_version, consent_at, trial_used
 templates  id, key UNIQUE, title, source_path, prompt, engine_model,
            duration_sec, resolution, credits_cost, price_kopecks,
-           is_active, engine_video_url, engine_video_at
+           is_active, is_default, engine_video_url, engine_video_at
 orders     id, user_id → users, template_id → templates, status,
            price_kopecks, credits_cost, payment_provider, payment_id UNIQUE,
            error_code, created_at, paid_at, delivered_at
@@ -144,22 +145,29 @@ events     id, user_id NULL, name, props jsonb, created_at
 
 ```
  created ──► paid ──► queued ──► running ──► delivered ──► purged
-               │        │          │
-               └────────┴──────────┴──► failed ──► refunded
+               │        │          │  ▲
+               └────────┴──────────┘  └──► failed ──► refunded
+                                      └──► rejected ──► refunded
+
+running ──► queued  (retry или watchdog)
 ```
 
 Разрешённые переходы описаны в `order_service.TRANSITIONS`. Любой другой
-переход — исключение и запись в лог уровня `error`.
+переход возвращает `Err(IllegalTransition)` и не меняет строку в БД.
 
 ### Стейт-машина задания
 
 ```
-new ──► submitted ──► polling ──► done
-         │             │
-         └─────────────┴──► failed        (retry, если attempt < max)
-                        └──► rejected      (без retry)
-                        └──► no_credits    (без retry, стоп продаж)
+new ──► running ──► done
+          │
+          ├──► new      (retry: attempt+1, next_attempt_at)
+          └──► failed   (терминально; order failed/rejected → refunded)
 ```
+
+Промежуточные `submitted`/`polling` живут внутри движка и в БД не пишутся.
+`request_id` сохраняется сразу после submit; при рестарте polling продолжается
+по нему. `rejected` и `no_credits` — статусы заказа, а не job; job в обоих
+случаях терминально `failed` с соответствующим `error_code`.
 
 ## 6. Очередь
 

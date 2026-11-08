@@ -5,8 +5,8 @@ progress:
   total_phases: 6
   completed_phases: 0
   total_plans: 20
-  completed_plans: 3
-  percent: 15
+  completed_plans: 4
+  percent: 20
 ---
 
 # Project State
@@ -23,28 +23,28 @@ See: .planning/PROJECT.md (updated 2026-11-08)
 ## Current Position
 
 Phase: 1 of 6 (Сквозной сценарий на заглушках)
-Plan: 3 of 4 in current phase
-Status: In progress
-Last activity: 2026-11-08 — 01-03 завершён: матрица ошибок, raw, удаление
-фото; 246 тестов, покрытие 81%, lint чистый.
+Plan: 4 of 4 in current phase
+Status: Awaiting manual Telegram UAT
+Last activity: 2026-11-08 — 01-04 завершён: is_default, миграция 0003,
+upsert шаблона, docs; 248 тестов, покрытие 81%, bot в polling.
 
-Progress: [██░░░░░░░░] 15%
+Progress: [██░░░░░░░░] 20%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 3
-- Average duration: 21.7 min
-- Total execution time: 1.1 hours
+- Total plans completed: 4
+- Average duration: 21.25 min
+- Total execution time: 1.4 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 1. Сквозной сценарий | 3/4 | 65 min | 21.7 min |
+| 1. Сквозной сценарий | 4/4 | 85 min | 21.25 min |
 
 **Recent Trend:**
-- Last 5 plans: 15 min, 30 min, 20 min
+- Last 5 plans: 15 min, 30 min, 20 min, 20 min
 - Trend: Stable
 
 ## Accumulated Context
@@ -61,6 +61,8 @@ Progress: [██░░░░░░░░] 15%
 - Коды ошибок нормализуются; неизвестный код провайдера → `unknown`, raw
   санитизируется и пишется в `events`.
 - Фото удаляется при терминальном статусе, при сбое очереди и по TTL 15 минут.
+- Шаблон — upsert по `key`, `is_default` один; `prompt.txt` применяется
+  рестартом.
 - v1: бесплатного реролла нет; «Ещё раз» создаёт новый оплаченный заказ.
 - `no_credits` — `failed` + `error_code=no_credits`, пауза продаж 60 минут.
 - `tasks.ps1` сохранён в UTF-8 с BOM; `.\tasks.cmd test` работает.
@@ -68,12 +70,15 @@ Progress: [██░░░░░░░░] 15%
 
 ### Pending Todos
 
-- 01-04: TMPL-01…04, PRIV-06, QA-06, финальная проверка и docs.
+- Пользователю: ручной Telegram-прогон `/start → согласие → оплата → фото →
+  видео` на запущенном mock-боте.
+- После подтверждения: phase 2 (живой Higgsfield) — нужны ключи HF,
+  `source.mp4`, `prompt.txt`.
 
 ### Blockers/Concerns
 
-- Phase 2 (живой Higgsfield) заблокирована: `HF_KEY_ID`, `HF_KEY_SECRET`,
-  `HF_MODEL` пусты; нет `templates/default/source.mp4` и `prompt.txt`.
+- Phase 2 заблокирована: `HF_KEY_ID`, `HF_KEY_SECRET`, `HF_MODEL` пусты; нет
+  `templates/default/source.mp4` и `prompt.txt`.
 - `.planning/codebase/` имеет штамп `8cdc2ab`, HEAD ушёл вперёд — карту нужно
   перештамповать после фазы 1.
 - `app/worker/loop.py` — 0% покрытия: `run_pool` и watchdog-loop не тестируются.
@@ -88,6 +93,6 @@ Progress: [██░░░░░░░░] 15%
 
 ## Session Continuity
 
-Last session: 2026-11-08 20:45
-Stopped at: Phase 1 plan 01-03 complete; next — 01-04
-Resume file: .planning/phases/FC-01-skvoznoy-stsenariy-na-zaglushkah/01-03-SUMMARY.md
+Last session: 2026-11-08 21:05
+Stopped at: Phase 1 plans 4/4 complete; awaiting manual Telegram UAT
+Resume file: .planning/phases/FC-01-skvoznoy-stsenariy-na-zaglushkah/01-04-SUMMARY.md

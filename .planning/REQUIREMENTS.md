@@ -34,11 +34,13 @@
 
 ### Template Catalog
 
-- [ ] **TMPL-01**: Шаблон хранится в БД и в `templates/<key>/config.yaml`:
-  `key`, `title`, `prompt`, `engine_model`, `duration_sec`, `resolution`,
-  `credits_cost`, `price_kopecks`, `is_active`, `is_default`.
-- [ ] **TMPL-02**: При старте процесса `config.yaml` синхронизируется с
-  таблицей; правка промпта подхватывается рестартом без изменения кода.
+- [ ] **TMPL-01**: Шаблон хранится в БД; промпт читается из
+  `templates/<key>/prompt.txt`. Поля: `key`, `title`, `source_path`, `prompt`,
+  `engine_model`, `duration_sec`, `resolution`, `credits_cost`,
+  `price_kopecks`, `is_active`, `is_default`.
+- [ ] **TMPL-02**: При старте процесса шаблон синхронизируется с таблицей
+  upsert-ом по `key`; правка `prompt.txt` подхватывается рестартом без
+  изменения кода.
 - [ ] **TMPL-03**: Ровно один активный шаблон помечен `is_default`; два
   default — ошибка конфигурации; ни одного — «технические работы» и алерт.
 - [ ] **TMPL-04**: Промпт не показывается пользователю и не принимается от
