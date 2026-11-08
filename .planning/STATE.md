@@ -5,8 +5,8 @@ progress:
   total_phases: 6
   completed_phases: 0
   total_plans: 20
-  completed_plans: 1
-  percent: 5
+  completed_plans: 2
+  percent: 10
 ---
 
 # Project State
@@ -23,28 +23,28 @@ See: .planning/PROJECT.md (updated 2026-11-08)
 ## Current Position
 
 Phase: 1 of 6 (Сквозной сценарий на заглушках)
-Plan: 1 of 4 in current phase
+Plan: 2 of 4 in current phase
 Status: In progress
-Last activity: 2026-11-08 — 01-01 завершён: E2E на заглушках, 207 тестов,
-покрытие 76%, lint чистый.
+Last activity: 2026-11-08 — 01-02 завершён: request_id/resume, retry 2/5/15,
+watchdog; 226 тестов, покрытие 80%, lint чистый.
 
-Progress: [█░░░░░░░░░] 5%
+Progress: [█░░░░░░░░░] 10%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 1
-- Average duration: 15 min
-- Total execution time: 0.25 hours
+- Total plans completed: 2
+- Average duration: 22.5 min
+- Total execution time: 0.75 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 1. Сквозной сценарий | 1/4 | 15 min | 15 min |
+| 1. Сквозной сценарий | 2/4 | 45 min | 22.5 min |
 
 **Recent Trend:**
-- Last 5 plans: 15 min
+- Last 5 plans: 15 min, 30 min
 - Trend: Stable
 
 ## Accumulated Context
@@ -54,6 +54,10 @@ Progress: [█░░░░░░░░░] 5%
 - Phase 1: mock-first — ключей Higgsfield нет, сначала весь путь на заглушках.
 - E2E: настоящий `Dispatcher` + `feed_update`, фейковая `BaseSession`, реальная
   PostgreSQL; `session_factory` поверх транзакции теста.
+- `request_id` пишется через `on_submit` hook и не теряется при retry:
+  следующий запуск продолжает polling, а не submit.
+- Повторы: первая попытка + 3 повтора, backoff 2/5/15; `no_credits` и
+  `moderated` не повторяются.
 - v1: бесплатного реролла нет; «Ещё раз» создаёт новый оплаченный заказ.
 - `no_credits` — `failed` + `error_code=no_credits`, пауза продаж 60 минут.
 - `tasks.ps1` сохранён в UTF-8 с BOM; `.\tasks.cmd test` работает.
@@ -61,7 +65,6 @@ Progress: [█░░░░░░░░░] 5%
 
 ### Pending Todos
 
-- 01-02: `request_id`, resume, retry 2/5/15, timeout, watchdog.
 - 01-03: матрица ошибок, ledger и удаление фото в ветках отказа.
 - 01-04: полная проверка и docs.
 
@@ -71,9 +74,9 @@ Progress: [█░░░░░░░░░] 5%
   `HF_MODEL` пусты; нет `templates/default/source.mp4` и `prompt.txt`.
 - `.planning/codebase/` имеет штамп `8cdc2ab`, HEAD ушёл вперёд — карту нужно
   перештамповать после фазы 1.
-- Именованные GSD-субагенты не установлены; research/roadmap — inline.
-- `MockVideoEngine` не возвращает `request_id`; resume проверяется в 01-02
-  фейковым движком.
+- `app/worker/loop.py` — 0% покрытия: `run_pool` и watchdog-loop не тестируются.
+- Один прогон `.\tasks.cmd test` упал на TLS-таймауте Docker-зеркала; тесты
+  прошли на существующем образе без `--build`.
 
 ## Deferred Items
 
@@ -83,6 +86,6 @@ Progress: [█░░░░░░░░░] 5%
 
 ## Session Continuity
 
-Last session: 2026-11-08 20:20
-Stopped at: Phase 1 plan 01-01 complete; next — 01-02
-Resume file: .planning/phases/FC-01-skvoznoy-stsenariy-na-zaglushkah/01-01-SUMMARY.md
+Last session: 2026-11-08 20:45
+Stopped at: Phase 1 plan 01-02 complete; next — 01-03
+Resume file: .planning/phases/FC-01-skvoznoy-stsenariy-na-zaglushkah/01-02-SUMMARY.md
