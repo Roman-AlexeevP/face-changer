@@ -79,7 +79,12 @@ TRANSITIONS: Mapping[OrderStatus, frozenset[OrderStatus]] = MappingProxyType(
             {OrderStatus.RUNNING, OrderStatus.FAILED, OrderStatus.REJECTED}
         ),
         OrderStatus.RUNNING: frozenset(
-            {OrderStatus.DELIVERED, OrderStatus.FAILED, OrderStatus.REJECTED}
+            {
+                OrderStatus.DELIVERED,
+                OrderStatus.FAILED,
+                OrderStatus.REJECTED,
+                OrderStatus.QUEUED,
+            }
         ),
         OrderStatus.DELIVERED: frozenset({OrderStatus.PURGED}),
         OrderStatus.FAILED: frozenset({OrderStatus.REFUNDED}),
@@ -121,6 +126,11 @@ def enqueue(order: Order, now: datetime) -> Result[Order, OrderError]:
 def start(order: Order, now: datetime) -> Result[Order, OrderError]:
     """Начало работы воркера: queued → running."""
     return transition(order, OrderStatus.RUNNING, now)
+
+
+def requeue(order: Order, now: datetime) -> Result[Order, OrderError]:
+    """Возврат в очередь после сбоя или зависания: running → queued."""
+    return transition(order, OrderStatus.QUEUED, now)
 
 
 def deliver(order: Order, now: datetime) -> Result[Order, OrderError]:

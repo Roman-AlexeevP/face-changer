@@ -3,9 +3,10 @@
 import asyncio
 import logging
 
-from app.db import repo
+from app.db import job_queue
 from app.worker.pipeline import process_job
 from app.worker.services import WorkerServices
+from app.worker.watchdog import watchdog_loop
 
 IDLE_DELAY_SEC = 1.0
 
@@ -16,12 +17,14 @@ async def run_pool(services: WorkerServices, stop: asyncio.Event) -> None:
     """Запускает N слотов; каждый обрабатывает по одной задаче за итерацию."""
     concurrency = max(1, services.settings.worker_concurrency)
     slots = [asyncio.create_task(run_slot(services, stop)) for _ in range(concurrency)]
+    watchdog = asyncio.create_task(watchdog_loop(services, stop))
     try:
         await asyncio.gather(*slots)
     finally:
+        watchdog.cancel()
         for slot in slots:
             slot.cancel()
-        await asyncio.gather(*slots, return_exceptions=True)
+        await asyncio.gather(watchdog, *slots, return_exceptions=True)
 
 
 async def run_slot(services: WorkerServices, stop: asyncio.Event) -> None:
@@ -41,8 +44,8 @@ async def run_slot(services: WorkerServices, stop: asyncio.Event) -> None:
             logger.exception("job loop failed", extra={"job_id": claimed.id})
 
 
-async def claim_next(services: WorkerServices) -> repo.ClaimedJob | None:
+async def claim_next(services: WorkerServices) -> job_queue.ClaimedJob | None:
     async with services.session_factory() as session:
-        claimed = await repo.claim_job(session, services.now())
+        claimed = await job_queue.claim_job(session, services.now())
         await session.commit()
         return claimed

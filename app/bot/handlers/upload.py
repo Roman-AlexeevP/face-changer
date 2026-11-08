@@ -10,7 +10,7 @@ from app.bot import texts
 from app.bot.handlers.start import show_consent
 from app.bot.photo import download_photo, save_photo
 from app.bot.services import BotServices
-from app.db import repo
+from app.db import job_queue, repo
 from app.domain import moderation, order_service
 from app.domain.order_service import Order
 from app.domain.result import Err
@@ -85,11 +85,11 @@ async def queue_order(upload: PhotoUpload) -> None:
     if isinstance(enqueued, Err):
         raise LookupError(f"Заказ {upload.order.id} не готов к очереди")
     await repo.save_order(upload.session, enqueued.value)
-    request = repo.JobRequest(
+    request = job_queue.JobRequest(
         upload.order.id,
         upload.services.settings.engine,
         f"{upload.order.id}:{JOB_ATTEMPT}",
     )
-    await repo.create_job(upload.session, request)
+    await job_queue.create_job(upload.session, request)
     event = repo.EventRecord("photo_accepted", upload.order.user_id, {"order_id": upload.order.id})
     await repo.record_event(upload.session, event)

@@ -13,6 +13,7 @@ from app.engines.base import (
     EngineStatus,
     EngineUnavailable,
     JobSpec,
+    SubmitHook,
 )
 from app.engines.transport import HttpTransport, read_json
 
@@ -60,14 +61,25 @@ class HiggsfieldVideoEngine:
     sleep: Sleeper = asyncio.sleep
     video_urls: dict[str, str] = field(default_factory=dict, repr=False, compare=False)
 
-    async def generate(self, spec: JobSpec) -> EngineResult:
+    async def generate(self, spec: JobSpec, *, on_submit: SubmitHook | None = None) -> EngineResult:
         """Проводит одну генерацию от загрузки медиа до терминального ответа."""
+        if spec.request_id:
+            return await self.poll(
+                Submission(spec.request_id, self.status_url_for(spec.request_id))
+            )
         media = replace(
             spec,
             video_url=await self.ensure_video_url(spec),
             photo_url=await upload_media(self.transport, self.config.upload_url, spec.photo_url),
         )
-        return await self.poll(await self.submit(build_payload(media)))
+        submission = await self.submit(build_payload(media))
+        if on_submit is not None:
+            await on_submit(submission.request_id)
+        return await self.poll(submission)
+
+    def status_url_for(self, request_id: str) -> str:
+        """Собирает адрес статуса для resume, когда status_url не сохранён."""
+        return extract_status_url({}, self.config.base_url, request_id)
 
     async def ensure_video_url(self, spec: JobSpec) -> str:
         """Отдаёт URL видео шаблона из кэша или загружает его один раз."""

@@ -3,7 +3,6 @@
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import datetime
-from enum import StrEnum
 from typing import Any
 
 from sqlalchemy import func, select
@@ -16,15 +15,6 @@ from app.domain.order_service import ACTIVE_STATUSES, Order, OrderStatus
 from app.domain.pricing import Tariff
 from app.domain.pricing import quote as quote_price
 from app.domain.result import Err
-
-
-class JobStatus(StrEnum):
-    """Статусы задания, которыми оперирует воркер."""
-
-    NEW = "new"
-    RUNNING = "running"
-    DONE = "done"
-    FAILED = "failed"
 
 
 @dataclass(frozen=True)
@@ -41,37 +31,6 @@ class ConsentRecord:
 
     version: str
     at: datetime
-
-
-@dataclass(frozen=True)
-class JobRequest:
-    """Данные для постановки задания в очередь."""
-
-    order_id: int
-    engine: str
-    idempotency_key: str
-    attempt: int = 1
-
-
-@dataclass(frozen=True)
-class ClaimedJob:
-    """Снимок задания, взятого воркером через SKIP LOCKED."""
-
-    id: int
-    order_id: int
-    engine: str
-    idempotency_key: str
-    attempt: int
-
-
-@dataclass(frozen=True)
-class JobOutcome:
-    """Терминальный статус задания."""
-
-    job_id: int
-    status: JobStatus
-    finished_at: datetime
-    error_code: str | None = None
 
 
 @dataclass(frozen=True)
@@ -190,49 +149,6 @@ async def get_active_order(session: AsyncSession, user_id: int) -> Order | None:
     )
     row = (await session.execute(statement)).scalar_one_or_none()
     return to_order(row) if row is not None else None
-
-
-async def create_job(session: AsyncSession, request: JobRequest) -> None:
-    session.add(
-        models.Job(
-            order_id=request.order_id,
-            attempt=request.attempt,
-            engine=request.engine,
-            status=JobStatus.NEW.value,
-            idempotency_key=request.idempotency_key,
-        )
-    )
-    await session.flush()
-
-
-async def claim_job(session: AsyncSession, now: datetime) -> ClaimedJob | None:
-    statement = (
-        select(models.Job)
-        .where(
-            models.Job.status == JobStatus.NEW.value,
-            models.Job.next_attempt_at <= now,
-        )
-        .order_by(models.Job.id)
-        .with_for_update(skip_locked=True)
-        .limit(1)
-    )
-    row = (await session.execute(statement)).scalar_one_or_none()
-    if row is None:
-        return None
-    row.status = JobStatus.RUNNING.value
-    row.submitted_at = now
-    await session.flush()
-    return ClaimedJob(row.id, row.order_id, row.engine, row.idempotency_key, row.attempt)
-
-
-async def finish_job(session: AsyncSession, outcome: JobOutcome) -> None:
-    row = await session.get(models.Job, outcome.job_id)
-    if row is None:
-        return
-    row.status = outcome.status.value
-    row.finished_at = outcome.finished_at
-    row.error_code = outcome.error_code
-    await session.flush()
 
 
 async def load_ledger(session: AsyncSession, user_id: int) -> list[LedgerEntry]:

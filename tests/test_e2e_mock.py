@@ -23,7 +23,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from app.bot import keyboards, texts
 from app.bot.services import BotServices
 from app.config import Settings
-from app.db import models, repo
+from app.db import job_queue, models, repo
 from app.domain.ledger import LedgerReason
 from app.domain.order_service import OrderStatus
 from app.engines.mock import MockVideoEngine
@@ -250,7 +250,7 @@ async def test_mock_scenario_end_to_end(
     assert order.status is OrderStatus.QUEUED
     assert env.storage.photo_path(order_id).exists()
 
-    claim = await repo.claim_job(session, datetime.now(UTC) + timedelta(minutes=1))
+    claim = await job_queue.claim_job(session, datetime.now(UTC) + timedelta(minutes=1))
     assert claim is not None
     await process_job(env.worker, claim)
 
@@ -269,7 +269,7 @@ async def test_mock_scenario_end_to_end(
 
     job = await session.get(models.Job, claim.id)
     assert job is not None
-    assert job.status == repo.JobStatus.DONE.value
+    assert job.status == job_queue.JobStatus.DONE.value
     assert job.request_id is None  # mock-движок не использует request_id
 
     events = await session.execute(

@@ -16,6 +16,7 @@ from app.engines.base import (
     EngineStatus,
     EngineUnavailable,
     JobSpec,
+    SubmitHook,
 )
 
 WIDTH = 720
@@ -44,7 +45,7 @@ class MockVideoEngine:
     ffmpeg: str = "ffmpeg"
     duration_sec: int = 5
 
-    async def generate(self, spec: JobSpec) -> EngineResult:
+    async def generate(self, spec: JobSpec, *, on_submit: SubmitHook | None = None) -> EngineResult:
         binary = shutil.which(self.ffmpeg)
         if binary is None:
             raise EngineUnavailable("ffmpeg не найден: установите ffmpeg или проверьте PATH.")

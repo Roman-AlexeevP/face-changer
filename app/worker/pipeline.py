@@ -4,6 +4,7 @@ import asyncio
 import logging
 from dataclasses import dataclass
 from datetime import datetime
+from functools import partial
 from pathlib import Path
 
 from aiogram import Bot
@@ -11,12 +12,14 @@ from aiogram.types import FSInputFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.bot import keyboards, texts
-from app.db import models, repo
+from app.db import job_queue, models, repo
 from app.domain import ledger, order_service, sales
 from app.domain.order_service import Order
 from app.domain.result import Err, Ok
 from app.engines.base import EngineError, EngineNoCredits, EngineResult, JobSpec
 from app.storage.base import Storage
+from app.worker.job_state import retry_job, save_request_id
+from app.worker.notify import load_chat_id, notify_failure, notify_rejected
 from app.worker.outcomes import (
     FAILED_CODE,
     MODERATED_CODE,
@@ -25,6 +28,7 @@ from app.worker.outcomes import (
     OutcomeKind,
     decide_outcome,
 )
+from app.worker.retry import should_retry
 from app.worker.services import WorkerServices
 
 logger = logging.getLogger(__name__)
@@ -46,7 +50,7 @@ class Failure:
     at: datetime
 
 
-async def process_job(services: WorkerServices, claim: repo.ClaimedJob) -> None:
+async def process_job(services: WorkerServices, claim: job_queue.ClaimedJob) -> None:
     """Ведёт заказ от взятого job до терминального статуса."""
     try:
         template = await start_order(services, claim)
@@ -55,13 +59,17 @@ async def process_job(services: WorkerServices, claim: repo.ClaimedJob) -> None:
     except EngineNoCredits:
         await no_credits_job(services, claim)
     except (EngineError, PipelineError) as error:
+        if should_retry(error.code, claim.attempt) and await retry_job(services, claim, error.code):
+            return
         await fail_job(services, claim, error.code)
     except Exception:
         logger.exception("job failed unexpectedly", extra={"job_id": claim.id})
         await fail_job(services, claim, "internal")
 
 
-async def apply_outcome(services: WorkerServices, claim: repo.ClaimedJob, outcome: Outcome) -> None:
+async def apply_outcome(
+    services: WorkerServices, claim: job_queue.ClaimedJob, outcome: Outcome
+) -> None:
     """Выполняет действие, выбранное чистой функцией решения."""
     if outcome.kind is OutcomeKind.DELIVER:
         await deliver(services, claim, outcome.result_url)
@@ -70,10 +78,13 @@ async def apply_outcome(services: WorkerServices, claim: repo.ClaimedJob, outcom
     elif outcome.error_code == NO_CREDITS_CODE:
         await no_credits_job(services, claim)
     else:
-        await fail_job(services, claim, outcome.error_code or FAILED_CODE)
+        code = outcome.error_code or FAILED_CODE
+        if should_retry(code, claim.attempt) and await retry_job(services, claim, code):
+            return
+        await fail_job(services, claim, code)
 
 
-async def start_order(services: WorkerServices, claim: repo.ClaimedJob) -> models.Template:
+async def start_order(services: WorkerServices, claim: job_queue.ClaimedJob) -> models.Template:
     """Переводит заказ в running и достаёт шаблон для задания."""
     async with services.session_factory() as session:
         order = await repo.load_order(session, claim.order_id, for_update=True)
@@ -90,7 +101,7 @@ async def start_order(services: WorkerServices, claim: repo.ClaimedJob) -> model
     return template
 
 
-def build_spec(claim: repo.ClaimedJob, template: models.Template, storage: Storage) -> JobSpec:
+def build_spec(claim: job_queue.ClaimedJob, template: models.Template, storage: Storage) -> JobSpec:
     """Собирает задание для движка из заказа, шаблона и пути фото."""
     return JobSpec(
         template_key=template.key,
@@ -100,16 +111,19 @@ def build_spec(claim: repo.ClaimedJob, template: models.Template, storage: Stora
         duration_sec=template.duration_sec,
         resolution=template.resolution,
         idempotency_key=claim.idempotency_key,
+        request_id=claim.request_id,
     )
 
 
 async def generate_video(
-    services: WorkerServices, claim: repo.ClaimedJob, template: models.Template
+    services: WorkerServices, claim: job_queue.ClaimedJob, template: models.Template
 ) -> EngineResult:
-    return await services.engine.generate(build_spec(claim, template, services.storage))
+    spec = build_spec(claim, template, services.storage)
+    hook = partial(save_request_id, services, claim.id)
+    return await services.engine.generate(spec, on_submit=hook)
 
 
-async def deliver(services: WorkerServices, claim: repo.ClaimedJob, path: str | None) -> None:
+async def deliver(services: WorkerServices, claim: job_queue.ClaimedJob, path: str | None) -> None:
     if path is None:
         raise PipelineError(FAILED_CODE)
     chat_id = await load_chat_id(services, claim)
@@ -144,7 +158,7 @@ def is_local_file(path: str) -> bool:
     return Path(path).exists()
 
 
-async def mark_delivered(services: WorkerServices, claim: repo.ClaimedJob) -> None:
+async def mark_delivered(services: WorkerServices, claim: job_queue.ClaimedJob) -> None:
     now = services.now()
     async with services.session_factory() as session:
         order = await repo.load_order(session, claim.order_id, for_update=True)
@@ -154,7 +168,8 @@ async def mark_delivered(services: WorkerServices, claim: repo.ClaimedJob) -> No
         if isinstance(delivered, Err):
             raise PipelineError("order_not_deliverable")
         await repo.save_order(session, delivered.value)
-        await repo.finish_job(session, repo.JobOutcome(claim.id, repo.JobStatus.DONE, now))
+        outcome = job_queue.JobOutcome(claim.id, job_queue.JobStatus.DONE, now)
+        await job_queue.finish_job(session, outcome)
         event = repo.EventRecord(
             "order_delivered", delivered.value.user_id, {"order_id": claim.order_id}
         )
@@ -163,7 +178,7 @@ async def mark_delivered(services: WorkerServices, claim: repo.ClaimedJob) -> No
 
 
 async def cleanup(
-    services: WorkerServices, claim: repo.ClaimedJob, result_path: str | None
+    services: WorkerServices, claim: job_queue.ClaimedJob, result_path: str | None
 ) -> None:
     try:
         await services.storage.delete_photo(claim.order_id)
@@ -173,20 +188,20 @@ async def cleanup(
         logger.warning("cleanup failed", extra={"job_id": claim.id})
 
 
-async def fail_job(services: WorkerServices, claim: repo.ClaimedJob, code: str) -> None:
+async def fail_job(services: WorkerServices, claim: job_queue.ClaimedJob, code: str) -> None:
     await mark_failed(services, claim, code)
     await cleanup(services, claim, None)
     await notify_failure(services, claim, code)
 
 
-async def mark_failed(services: WorkerServices, claim: repo.ClaimedJob, code: str) -> None:
+async def mark_failed(services: WorkerServices, claim: job_queue.ClaimedJob, code: str) -> None:
     now = services.now()
     async with services.session_factory() as session:
         order = await repo.load_order(session, claim.order_id, for_update=True)
         if order is not None:
             await fail_order(session, order, Failure(code, now))
-        outcome = repo.JobOutcome(claim.id, repo.JobStatus.FAILED, now, code)
-        await repo.finish_job(session, outcome)
+        outcome = job_queue.JobOutcome(claim.id, job_queue.JobStatus.FAILED, now, code)
+        await job_queue.finish_job(session, outcome)
         event = repo.EventRecord("job_failed", None, {"job_id": claim.id, "error_code": code})
         await repo.record_event(session, event)
         await session.commit()
@@ -213,20 +228,20 @@ async def refund_credit(session: AsyncSession, order: Order, now: datetime) -> N
         await repo.save_order(session, refunded.value)
 
 
-async def reject_job(services: WorkerServices, claim: repo.ClaimedJob, code: str) -> None:
+async def reject_job(services: WorkerServices, claim: job_queue.ClaimedJob, code: str) -> None:
     await mark_rejected(services, claim, code)
     await cleanup(services, claim, None)
     await notify_rejected(services, claim)
 
 
-async def mark_rejected(services: WorkerServices, claim: repo.ClaimedJob, code: str) -> None:
+async def mark_rejected(services: WorkerServices, claim: job_queue.ClaimedJob, code: str) -> None:
     now = services.now()
     async with services.session_factory() as session:
         order = await repo.load_order(session, claim.order_id, for_update=True)
         if order is not None:
             await reject_order(session, order, Failure(code, now))
-        outcome = repo.JobOutcome(claim.id, repo.JobStatus.FAILED, now, code)
-        await repo.finish_job(session, outcome)
+        outcome = job_queue.JobOutcome(claim.id, job_queue.JobStatus.FAILED, now, code)
+        await job_queue.finish_job(session, outcome)
         user_id = order.user_id if order is not None else None
         event = repo.EventRecord("order_rejected", user_id, {"order_id": claim.order_id})
         await repo.record_event(session, event)
@@ -241,51 +256,22 @@ async def reject_order(session: AsyncSession, order: Order, failure: Failure) ->
     await refund_credit(session, rejected.value, failure.at)
 
 
-async def no_credits_job(services: WorkerServices, claim: repo.ClaimedJob) -> None:
+async def no_credits_job(services: WorkerServices, claim: job_queue.ClaimedJob) -> None:
     await mark_no_credits(services, claim)
     await cleanup(services, claim, None)
     await notify_failure(services, claim, NO_CREDITS_CODE)
 
 
-async def mark_no_credits(services: WorkerServices, claim: repo.ClaimedJob) -> None:
+async def mark_no_credits(services: WorkerServices, claim: job_queue.ClaimedJob) -> None:
     now = services.now()
     async with services.session_factory() as session:
         order = await repo.load_order(session, claim.order_id, for_update=True)
         if order is not None:
             await fail_order(session, order, Failure(NO_CREDITS_CODE, now))
-        outcome = repo.JobOutcome(claim.id, repo.JobStatus.FAILED, now, NO_CREDITS_CODE)
-        await repo.finish_job(session, outcome)
+        outcome = job_queue.JobOutcome(claim.id, job_queue.JobStatus.FAILED, now, NO_CREDITS_CODE)
+        await job_queue.finish_job(session, outcome)
         await repo.write_flag(session, sales.build_sales_block(now))
         user_id = order.user_id if order is not None else None
         event = repo.EventRecord("engine_no_credits", user_id, {"job_id": claim.id})
         await repo.record_event(session, event)
         await session.commit()
-
-
-async def notify_rejected(services: WorkerServices, claim: repo.ClaimedJob) -> None:
-    chat_id = await load_chat_id(services, claim)
-    if chat_id is None:
-        return
-    try:
-        await services.bot.send_message(chat_id, texts.MODERATION_REJECTED)
-    except Exception:
-        logger.warning("failed to notify rejection", extra={"job_id": claim.id})
-
-
-async def notify_failure(services: WorkerServices, claim: repo.ClaimedJob, code: str) -> None:
-    chat_id = await load_chat_id(services, claim)
-    if chat_id is None:
-        return
-    try:
-        await services.bot.send_message(chat_id, texts.failure_text(code))
-    except Exception:
-        logger.warning("failed to notify user", extra={"job_id": claim.id})
-
-
-async def load_chat_id(services: WorkerServices, claim: repo.ClaimedJob) -> int | None:
-    async with services.session_factory() as session:
-        order = await repo.load_order(session, claim.order_id)
-        if order is None:
-            return None
-        user = await repo.load_user(session, order.user_id)
-        return user.tg_id if user is not None else None

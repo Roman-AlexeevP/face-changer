@@ -200,10 +200,11 @@ async def test_500_is_retried_exactly_three_times() -> None:
         calls.append(request.url.path)
         return httpx.Response(500, text="boom")
 
-    with pytest.raises(EngineFailed):
+    with pytest.raises(EngineFailed) as error:
         await make_engine(handler, sleep=sleeps).generate(SPEC)
     assert calls == [MODEL_PATH] * 3
     assert len(sleeps.delays) == 2
+    assert error.value.code == "engine_5xx"
 
 
 async def test_429_respects_retry_after_and_retries() -> None:
@@ -294,3 +295,36 @@ async def test_upload_404_raises_unavailable_with_hint(tmp_path: Path) -> None:
 
     with pytest.raises(EngineUnavailable, match="HF_UPLOAD_URL"):
         await make_engine(handler).generate(spec)
+
+
+async def test_submit_hook_receives_request_id() -> None:
+    seen: list[str] = []
+
+    async def hook(request_id: str) -> None:
+        seen.append(request_id)
+
+    handler = make_status_handler(
+        [{"status": "completed", "video": {"url": "https://cdn.example/out.mp4"}}],
+        [],
+    )
+
+    result = await make_engine(handler).generate(SPEC, on_submit=hook)
+
+    assert result.status is EngineStatus.DONE
+    assert seen == ["req-1"]
+
+
+async def test_resume_polls_request_without_submit() -> None:
+    calls: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(f"{request.method} {request.url.path}")
+        return httpx.Response(
+            200,
+            json={"status": "completed", "video": {"url": "https://cdn.example/out.mp4"}},
+        )
+
+    result = await make_engine(handler).generate(replace(SPEC, request_id="req-1"))
+
+    assert result.status is EngineStatus.DONE
+    assert calls == ["GET /requests/req-1"]

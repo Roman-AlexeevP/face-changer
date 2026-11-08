@@ -5,7 +5,7 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db import models, repo
+from app.db import job_queue, models, repo
 from app.domain import ledger, order_service
 from app.domain.result import Ok
 
@@ -68,13 +68,13 @@ async def test_claim_job_takes_job_only_once(session: AsyncSession) -> None:
     user = await repo.get_or_create_user(session, 900003)
     template = await add_template(session)
     order = await repo.create_order(session, repo.NewOrder(user.id, template))
-    await repo.create_job(session, repo.JobRequest(order.id, "mock", f"{order.id}:1"))
+    await job_queue.create_job(session, job_queue.JobRequest(order.id, "mock", f"{order.id}:1"))
 
-    claimed = await repo.claim_job(session, CLAIM_AT)
+    claimed = await job_queue.claim_job(session, CLAIM_AT)
 
     assert claimed is not None
     assert claimed.order_id == order.id
-    assert await repo.claim_job(session, CLAIM_AT) is None
+    assert await job_queue.claim_job(session, CLAIM_AT) is None
 
 
 async def test_ledger_entries_sum_to_zero_after_charge(session: AsyncSession) -> None:

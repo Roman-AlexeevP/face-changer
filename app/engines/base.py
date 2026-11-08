@@ -1,8 +1,11 @@
 """Контракт видео-движка: задание, результат и типы ошибок."""
 
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import Protocol
+
+type SubmitHook = Callable[[str], Awaitable[None]]
 
 
 class EngineStatus(StrEnum):
@@ -27,6 +30,7 @@ class JobSpec:
     duration_sec: int
     resolution: str
     idempotency_key: str
+    request_id: str | None = None
 
 
 @dataclass(frozen=True)
@@ -56,6 +60,11 @@ class EngineFailed(EngineError):
 
     code = "engine_failed"
 
+    def __init__(self, message: str, code: str | None = None) -> None:
+        super().__init__(message)
+        if code is not None:
+            self.code = code
+
 
 class EngineAuthError(EngineError):
     """Движок отклонил ключи доступа (HTTP 401/403)."""
@@ -84,6 +93,6 @@ class EngineBadConfig(EngineError):
 class VideoEngine(Protocol):
     """Порт генерации: mock отвечает сразу, реальный движок — через poll."""
 
-    async def generate(self, spec: JobSpec) -> EngineResult:
+    async def generate(self, spec: JobSpec, *, on_submit: SubmitHook | None = None) -> EngineResult:
         """Выполняет одну генерацию и возвращает терминальный результат."""
         ...

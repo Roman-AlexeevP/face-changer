@@ -89,11 +89,15 @@ class HttpTransport:
         try:
             response = await self._client.request(method, url, json=payload, files=files)
         except httpx.TransportError as error:
-            return None, EngineFailed(f"сетевая ошибка Higgsfield: {error}"), None
+            return None, EngineFailed(f"сетевая ошибка Higgsfield: {error}", code="network"), None
         if not is_retryable(response.status_code):
             raise_for_status(response)
             return response, None, None
-        return None, EngineFailed(describe_response(response)), parse_retry_after(response)
+        return (
+            None,
+            EngineFailed(describe_response(response), code=retry_code(response.status_code)),
+            parse_retry_after(response),
+        )
 
     async def aclose(self) -> None:
         """Закрывает соединения клиента."""
@@ -103,6 +107,11 @@ class HttpTransport:
 def is_retryable(status: int) -> bool:
     """Повторяем только перегрузку, лимиты и серверные ошибки."""
     return status in RETRYABLE_STATUSES or status >= 500
+
+
+def retry_code(status: int) -> str:
+    """Код исчерпанного повтора: лимит частоты отличается от 5xx."""
+    return "rate_limited" if status == 429 else "engine_5xx"
 
 
 def raise_for_status(response: httpx.Response) -> None:
