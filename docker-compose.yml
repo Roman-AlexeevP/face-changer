@@ -29,6 +29,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    volumes:
+      - media_data:/data/tmp
     command: ["python", "-m", "app.main_bot"]
 
   # Одноразовая джоба: применяет миграции и завершается.
@@ -63,6 +65,8 @@ services:
         condition: service_healthy
       bot:
         condition: service_started
+    volumes:
+      - media_data:/data/tmp
     stop_grace_period: 30s
     command: ["python", "-m", "app.main_worker"]
 
@@ -116,3 +120,4 @@ services:
 
 volumes:
   postgres_data:
+  media_data:

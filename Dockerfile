@@ -13,6 +13,7 @@ RUN apt-get update \
 
 COPY pyproject.toml README.md alembic.ini ./
 COPY app ./app
+COPY templates ./templates
 
 # Индекс задаётся снаружи: по умолчанию PyPI, при необходимости — зеркало.
 ARG PIP_INDEX_URL=https://pypi.org/simple

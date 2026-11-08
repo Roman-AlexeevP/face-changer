@@ -10,6 +10,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import models
+from app.domain import sales
 from app.domain.ledger import LedgerEntry, LedgerReason
 from app.domain.order_service import ACTIVE_STATUSES, Order, OrderStatus
 from app.domain.pricing import Tariff
@@ -124,6 +125,19 @@ async def load_template(session: AsyncSession, template_id: int) -> models.Templ
 async def count_templates(session: AsyncSession) -> int:
     statement = select(func.count()).select_from(models.Template)
     return int((await session.execute(statement)).scalar_one())
+
+
+async def read_flag(session: AsyncSession, name: str) -> sales.Flag | None:
+    row = await session.get(models.ServiceFlag, name)
+    if row is None:
+        return None
+    return sales.Flag(row.name, row.value, row.expires_at)
+
+
+async def write_flag(session: AsyncSession, flag: sales.Flag) -> None:
+    row = models.ServiceFlag(name=flag.name, value=flag.value, expires_at=flag.expires_at)
+    await session.merge(row)
+    await session.flush()
 
 
 async def create_order(session: AsyncSession, request: NewOrder) -> Order:

@@ -1,4 +1,4 @@
-﻿#Requires -Version 5.1
+#Requires -Version 5.1
 <#
 .SYNOPSIS
 Обёртка над docker compose для типовых задач проекта.
@@ -45,7 +45,18 @@ function Show-Usage {
 }
 
 switch ($Task) {
-    'up' { Invoke-Compose @('up', '-d', '--build') }
+    'up' {
+        Invoke-Compose @('up', '-d', '--wait', 'postgres')
+        try {
+            Invoke-Compose @('--profile', 'tools', 'run', '--rm', '--build', 'migrate')
+        }
+        catch {
+            Write-Host 'Ошибка: миграции не применились, приложение не запущено.' -ForegroundColor Red
+            Write-Host $_.Exception.Message -ForegroundColor Red
+            exit 1
+        }
+        Invoke-Compose @('up', '-d', '--build', '--force-recreate', 'bot', 'worker')
+    }
     'down' { Invoke-Compose @('down') }
     'logs' { Invoke-Compose @('logs', '-f', '--tail=100') }
     'migrate' { Invoke-Compose @('--profile', 'tools', 'run', '--rm', 'migrate') }

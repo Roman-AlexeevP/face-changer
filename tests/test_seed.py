@@ -1,10 +1,13 @@
 """Промпт шаблона: можно задать файлом рядом с видео, без правки кода."""
 
+import os
 from pathlib import Path
 
 from app.db import seed
 
-SCRATCH = Path(".tmp/seed-test")
+# Каждый процесс pytest (включая воркеры xdist) пишет в свой каталог:
+# фиксированный путь даёт гонку между тестами.
+SCRATCH = Path(".tmp") / f"seed-test-{os.getpid()}"
 
 
 def write_prompt_file(text: str) -> Path:

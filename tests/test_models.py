@@ -29,6 +29,7 @@ EXPECTED_COLUMNS = {
         "engine_video_url",
         "engine_video_at",
     },
+    "service_flags": {"name", "value", "expires_at"},
     "orders": {
         "id",
         "user_id",
@@ -86,7 +87,7 @@ def collect_index_names(table_name: str) -> set[str]:
     return {index.name for index in Base.metadata.tables[table_name].indexes}
 
 
-def test_schema_has_exactly_six_tables() -> None:
+def test_schema_has_exactly_expected_tables() -> None:
     assert set(Base.metadata.tables) == set(EXPECTED_COLUMNS)
 
 

@@ -1,6 +1,7 @@
 """Оплата заглушкой: заказ, кредиты в ledger, списание и запрос фото."""
 
 from dataclasses import dataclass
+from datetime import datetime
 
 from aiogram import F, Router
 from aiogram.types import CallbackQuery, Message
@@ -9,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.bot import keyboards, texts
 from app.bot.services import BotServices
 from app.db import models, repo
-from app.domain import ledger, order_service
+from app.domain import ledger, order_service, sales
 from app.domain.order_service import Order
 from app.domain.result import Err, Ok
 from app.payments.base import Invoice, PaymentFailed, PaymentStatus
@@ -42,7 +43,16 @@ async def handle_checkout(callback: CallbackQuery, services: BotServices) -> Non
         await target.answer(texts.TECH_WORKS)
         return
     async with services.session_factory() as session:
+        if await is_sales_blocked(session, services.now()):
+            await target.answer(texts.TECH_WORKS)
+            return
         await start_checkout(session, callback.from_user.id, target, services=services)
+
+
+async def is_sales_blocked(session: AsyncSession, now: datetime) -> bool:
+    """Читает флаг паузы продаж; решение принимает домен."""
+    flag = await repo.read_flag(session, sales.SALES_BLOCK_FLAG)
+    return not sales.is_sales_open(flag, now)
 
 
 async def start_checkout(

@@ -1,4 +1,4 @@
-"""Схема БД: шесть таблиц из docs/architecture.md §5."""
+"""Схема БД: таблицы заказа и сервисные флаги из docs/architecture.md §5."""
 
 from datetime import datetime
 from decimal import Decimal
@@ -66,6 +66,14 @@ class Template(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
     engine_video_url: Mapped[str | None] = mapped_column(Text)
     engine_video_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class ServiceFlag(Base):
+    __tablename__ = "service_flags"
+
+    name: Mapped[str] = mapped_column(Text, primary_key=True)
+    value: Mapped[str] = mapped_column(Text, nullable=False)
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class Order(Base):
