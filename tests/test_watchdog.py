@@ -1,5 +1,6 @@
 """Сторож возвращает зависшие running-задания в очередь."""
 
+import os
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -16,7 +17,7 @@ from app.domain.result import Ok
 from app.engines.mock import MockVideoEngine
 from app.storage.local import LocalStorage
 from app.worker.services import WorkerServices
-from app.worker.watchdog import requeue_stale
+from app.worker.watchdog import cleanup_old_photos, requeue_stale
 
 NOW = datetime(2026, 1, 15, 12, 0, tzinfo=UTC)
 DATABASE_URL = "postgresql+asyncpg://user:pass@localhost:5433/facechanger_test"
@@ -144,3 +145,18 @@ async def test_young_running_is_not_requeued(
     job = await session.get(models.Job, claimed.id)
     assert job is not None
     assert job.status == job_queue.JobStatus.RUNNING.value
+
+
+def test_cleanup_old_photos_removes_only_expired(tmp_path: Path) -> None:
+    old = tmp_path / "photo-old.jpg"
+    old.write_bytes(b"old")
+    os.utime(old, (NOW.timestamp() - 3600, NOW.timestamp() - 3600))
+    fresh = tmp_path / "photo-fresh.jpg"
+    fresh.write_bytes(b"fresh")
+    os.utime(fresh, (NOW.timestamp(), NOW.timestamp()))
+
+    removed = cleanup_old_photos(tmp_path, NOW, ttl_min=15)
+
+    assert removed == 1
+    assert not old.exists()
+    assert fresh.exists()

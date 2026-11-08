@@ -18,7 +18,8 @@ from app.domain.order_service import Order
 from app.domain.result import Err, Ok
 from app.engines.base import EngineError, EngineNoCredits, EngineResult, JobSpec
 from app.storage.base import Storage
-from app.worker.job_state import retry_job, save_request_id
+from app.worker.errors import normalize_error_code
+from app.worker.job_state import record_engine_raw, retry_job, save_request_id
 from app.worker.notify import load_chat_id, notify_failure, notify_rejected
 from app.worker.outcomes import (
     FAILED_CODE,
@@ -27,6 +28,7 @@ from app.worker.outcomes import (
     Outcome,
     OutcomeKind,
     decide_outcome,
+    sanitize_raw,
 )
 from app.worker.retry import should_retry
 from app.worker.services import WorkerServices
@@ -59,9 +61,10 @@ async def process_job(services: WorkerServices, claim: job_queue.ClaimedJob) -> 
     except EngineNoCredits:
         await no_credits_job(services, claim)
     except (EngineError, PipelineError) as error:
-        if should_retry(error.code, claim.attempt) and await retry_job(services, claim, error.code):
+        code = normalize_error_code(error.code)
+        if should_retry(code, claim.attempt) and await retry_job(services, claim, code):
             return
-        await fail_job(services, claim, error.code)
+        await fail_job(services, claim, code)
     except Exception:
         logger.exception("job failed unexpectedly", extra={"job_id": claim.id})
         await fail_job(services, claim, "internal")
@@ -78,7 +81,9 @@ async def apply_outcome(
     elif outcome.error_code == NO_CREDITS_CODE:
         await no_credits_job(services, claim)
     else:
-        code = outcome.error_code or FAILED_CODE
+        code = normalize_error_code(outcome.error_code or FAILED_CODE)
+        if code == "unknown" and outcome.raw is not None:
+            await record_engine_raw(services, claim, sanitize_raw(outcome.raw))
         if should_retry(code, claim.attempt) and await retry_job(services, claim, code):
             return
         await fail_job(services, claim, code)

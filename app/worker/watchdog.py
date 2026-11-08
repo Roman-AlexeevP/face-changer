@@ -4,6 +4,7 @@ import asyncio
 import contextlib
 import logging
 from datetime import datetime, timedelta
+from pathlib import Path
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -57,9 +58,29 @@ async def requeue_one(session: AsyncSession, row: models.Job, now: datetime) -> 
     return True
 
 
+def cleanup_old_photos(directory: Path, now: datetime, ttl_min: int) -> int:
+    """Удаляет исходные фото старше TTL; возвращает число удалённых."""
+    cutoff = now.timestamp() - ttl_min * 60
+    count = 0
+    for path in directory.glob("photo-*.jpg"):
+        try:
+            if path.stat().st_mtime < cutoff:
+                path.unlink(missing_ok=True)
+                count += 1
+        except OSError:
+            continue
+    return count
+
+
 async def watchdog_loop(services: WorkerServices, stop: asyncio.Event) -> None:
     """Периодически возвращает зависшие задания, пока воркер не остановлен."""
     while not stop.is_set():
+        await asyncio.to_thread(
+            cleanup_old_photos,
+            Path(services.settings.storage_dir),
+            services.now(),
+            services.settings.storage_url_ttl_min,
+        )
         try:
             await requeue_stale(services)
         except Exception:

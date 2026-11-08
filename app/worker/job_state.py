@@ -16,6 +16,20 @@ async def save_request_id(services: WorkerServices, job_id: int, request_id: str
         await session.commit()
 
 
+async def record_engine_raw(
+    services: WorkerServices, claim: job_queue.ClaimedJob, raw: dict[str, object]
+) -> None:
+    """Сохраняет санитизированный сырой ответ движка для разбора."""
+    async with services.session_factory() as session:
+        event = repo.EventRecord(
+            "engine_unknown",
+            None,
+            {"job_id": claim.id, "order_id": claim.order_id, "raw": raw},
+        )
+        await repo.record_event(session, event)
+        await session.commit()
+
+
 async def retry_job(services: WorkerServices, claim: job_queue.ClaimedJob, code: str) -> bool:
     """Возвращает заказ в queued, а задание — в new с новой попыткой."""
     now = services.now()

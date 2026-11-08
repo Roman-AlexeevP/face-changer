@@ -193,6 +193,43 @@ async def test_exhausted_retries_fail_and_refund_once(
 
 
 @pytest.mark.integration
+async def test_unknown_provider_code_is_sanitized(
+    session: AsyncSession,
+    session_factory: async_sessionmaker[AsyncSession],
+    tmp_path: Path,
+) -> None:
+    raw = {
+        "error": {"code": "face_not_found"},
+        "video": {"url": "https://signed.example/secret"},
+    }
+    services, engine, order_id = await build_services(
+        session,
+        session_factory,
+        tmp_path,
+        [EngineResult(EngineStatus.FAILED, error_code="face_not_found", raw=raw)],
+    )
+
+    claimed = await claim(session)
+    await process_job(services, claimed)
+
+    order = await repo.load_order(session, order_id)
+    assert order is not None
+    assert order.status is OrderStatus.REFUNDED
+    job = await session.get(models.Job, claimed.id)
+    assert job is not None
+    assert job.error_code == "unknown"
+    assert len(engine.calls) == 1
+    events = (
+        (await session.execute(select(models.Event).where(models.Event.name == "engine_unknown")))
+        .scalars()
+        .all()
+    )
+    assert len(events) == 1
+    assert events[0].props["raw"]["video"]["url"] == "[redacted]"
+    assert events[0].props["raw"]["error"]["code"] == "face_not_found"
+
+
+@pytest.mark.integration
 async def test_no_credits_is_not_retried(
     session: AsyncSession,
     session_factory: async_sessionmaker[AsyncSession],

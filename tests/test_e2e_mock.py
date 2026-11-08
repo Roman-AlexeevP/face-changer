@@ -276,3 +276,35 @@ async def test_mock_scenario_end_to_end(
         select(models.Event).where(models.Event.name == "order_delivered")
     )
     assert events.scalar_one_or_none() is not None
+
+
+@pytest.mark.integration
+async def test_queue_failure_deletes_photo(
+    session: AsyncSession,
+    session_factory: async_sessionmaker[AsyncSession],
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    ticks = iter(range(0, 100, 10))
+    monkeypatch.setattr("app.bot.middlewares.throttle.monotonic", lambda: float(next(ticks)))
+    env = await build_env(session, session_factory, tmp_path)
+
+    await env.dispatcher.feed_update(env.bot, text_update(1, "/start"))
+    await env.dispatcher.feed_update(env.bot, callback(2, keyboards.CONSENT_CALLBACK))
+    await env.dispatcher.feed_update(env.bot, callback(3, keyboards.CHECKOUT_CALLBACK))
+    user = await repo.get_user_by_tg_id(session, USER.id)
+    assert user is not None
+    order = await repo.get_active_order(session, user.id)
+    assert order is not None
+
+    async def fail_queue(_: object) -> None:
+        raise LookupError("race")
+
+    monkeypatch.setattr("app.bot.handlers.upload.queue_order", fail_queue)
+    await env.dispatcher.feed_update(env.bot, photo_update(4))
+
+    failed = await repo.load_order(session, order.id)
+    assert failed is not None
+    assert failed.status is OrderStatus.PAID
+    assert not env.storage.photo_path(order.id).exists()
+    assert texts.STORAGE_ERROR in texts_sent(env.bot)

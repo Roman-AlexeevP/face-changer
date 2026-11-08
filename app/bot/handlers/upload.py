@@ -4,6 +4,7 @@ from dataclasses import dataclass
 
 from aiogram import Bot, F, Router
 from aiogram.types import Message
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.bot import texts
@@ -76,7 +77,12 @@ async def accept_photo(upload: PhotoUpload) -> bool:
     if not await save_photo(upload.services.storage, upload.order.id, prepared.value.data):
         await upload.message.answer(texts.STORAGE_ERROR)
         return False
-    await queue_order(upload)
+    try:
+        await queue_order(upload)
+    except (LookupError, IntegrityError):
+        await upload.services.storage.delete_photo(upload.order.id)
+        await upload.message.answer(texts.STORAGE_ERROR)
+        return False
     return True
 
 
