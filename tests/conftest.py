@@ -12,7 +12,12 @@ import pytest
 import pytest_asyncio
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
+from sqlalchemy.ext.asyncio import (
+    AsyncEngine,
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
 
 from app.db.models import Base
 
@@ -67,3 +72,13 @@ async def session(db_schema: str) -> AsyncIterator[AsyncSession]:
             await db_session.close()
             await transaction.rollback()
     await engine.dispose()
+
+
+@pytest_asyncio.fixture(loop_scope="function")
+async def session_factory(session: AsyncSession) -> async_sessionmaker[AsyncSession]:
+    """Фабрика сессий поверх транзакции теста: коммиты становятся savepoint."""
+    return async_sessionmaker(
+        bind=session.bind,
+        expire_on_commit=False,
+        join_transaction_mode="create_savepoint",
+    )
