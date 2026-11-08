@@ -103,7 +103,7 @@ tests/
 docker-compose.yml
 .env.example
 pyproject.toml
-openspec/
+.planning/
 docs/
 ```
 

@@ -3,31 +3,22 @@
 Telegram-бот: пользователь присылает фото, бот вставляет лицо в видео-шаблон
 через Higgsfield API (Genjutsu) и возвращает готовое видео.
 
-Стадия: **MVP не начат**, документация и план готовы.
+Стадия: **MVP на заглушках.** Сквозной путь `/start → согласие → stub-оплата →
+фото → mock-движок → sendVideo` работает в Telegram. Следующий гейт — живой
+Higgsfield: нужны ключи и `templates/default/source.mp4`.
 
 ## Документы
 
 | Документ | Что внутри |
 |---|---|
-| [`docs/architecture.md`](docs/architecture.md) | компоненты, контракты, схема БД, потоки, обработка отказов |
-| [`docs/stack.md`](docs/stack.md) | стек, обоснование, env-переменные, структура репозитория |
-| [`docs/implementation-plan.md`](docs/implementation-plan.md) | этапы, календарь, гейты, риски |
-| [`openspec/project.md`](openspec/project.md) | контекст, границы MVP, соглашения проекта |
-| [`openspec/changes/mvp-001-core-flow/`](openspec/changes/mvp-001-core-flow/) | предложение, дизайн, задачи и требования MVP |
-
-## Спецификации
-
-Требования живут в изменении `mvp-001-core-flow` как дельта, пока изменение не
-заархивировано. После реализации `openspec archive` перенесёт их в
-`openspec/specs/` — это штатный жизненный цикл OpenSpec.
-
-- [`tg-entry`](openspec/changes/mvp-001-core-flow/specs/tg-entry/spec.md) — вход, согласие, приём фото
-- [`template-catalog`](openspec/changes/mvp-001-core-flow/specs/template-catalog/spec.md) — шаблон как данные
-- [`generation`](openspec/changes/mvp-001-core-flow/specs/generation/spec.md) — submit, polling, ретраи
-- [`billing`](openspec/changes/mvp-001-core-flow/specs/billing/spec.md) — заказ, заглушка оплаты, ledger
-- [`delivery`](openspec/changes/mvp-001-core-flow/specs/delivery/spec.md) — выдача видео
-- [`privacy-retention`](openspec/changes/mvp-001-core-flow/specs/privacy-retention/spec.md) — удаление фото, логи без PII
-- [`ops`](openspec/changes/mvp-001-core-flow/specs/ops/spec.md) — админка, гейты, алерты
+| [`.planning/PROJECT.md`](.planning/PROJECT.md) | контекст, границы MVP, ключевые решения |
+| [`.planning/REQUIREMENTS.md`](.planning/REQUIREMENTS.md) | требования v1 с REQ-ID и матрицей ошибок |
+| [`.planning/ROADMAP.md`](.planning/ROADMAP.md) | фазы, критерии приёмки, трассировка |
+| [`docs/architecture.md`](docs/architecture.md) | компоненты, контракты, схема БД, потоки |
+| [`docs/stack.md`](docs/stack.md) | стек, env-переменные, структура |
+| [`docs/implementation-plan.md`](docs/implementation-plan.md) | исходный план этапов |
+| [`docs/higgsfield-contract.md`](docs/higgsfield-contract.md) | что подтверждено и что проверить |
+| [`docs/archive/openspec/`](docs/archive/openspec/) | исторические требования MVP (архив, не действуют) |
 
 ## Команды
 
@@ -42,8 +33,8 @@ Telegram-бот: пользователь присылает фото, бот в
 ```
 
 `tasks.cmd` — тонкий шим над `tasks.ps1`: нужен потому, что на Windows
-PowerShell по умолчанию запрещает запуск `.ps1`. Если политика у вас
-разрешена, можно вызывать `.\tasks.ps1` напрямую.
+PowerShell по умолчанию запрещает запуск `.ps1`. `tasks.ps1` сохранён в UTF-8
+с BOM, чтобы Windows PowerShell 5.1 корректно читал кириллицу.
 
 ### Тесты
 
@@ -71,24 +62,20 @@ entrypoint приложения: при нескольких репликах о
 
 ## С чего начать
 
-1. Прочитать `docs/implementation-plan.md` — этап 0.
-2. Пройти проверку движка (0,5 дня) — это гейт для всего остального.
-3. Вернуться в `openspec/changes/mvp-001-core-flow/tasks.md` и идти по списку.
+1. Открыть [`.planning/ROADMAP.md`](.planning/ROADMAP.md) — текущая фаза и
+   критерии приёмки.
+2. Сверить задачу с [`.planning/REQUIREMENTS.md`](.planning/REQUIREMENTS.md).
+3. Перед живым запуском пройти чек-лист
+   [`docs/higgsfield-contract.md`](docs/higgsfield-contract.md).
+4. Для разработки — `ENGINE=mock`, `PAYMENT_PROVIDER=stub`.
 
 ## Процесс
 
-Проект инициализирован под OpenSpec CLI и проходит проверку:
+Проект ведётся по GSD. Требования — в `.planning/REQUIREMENTS.md`, фазы — в
+`.planning/ROADMAP.md`, текущее состояние — в `.planning/STATE.md`, план фазы —
+`.planning/phases/<NN-name>/PLAN.md`.
 
-```
-openspec validate --all     # ✓ change/mvp-001-core-flow
-openspec status --change mvp-001-core-flow
-openspec list               # mvp-001-core-flow  0/63 tasks
-```
-
-`openspec/specs/` — текущая правда (пока пусто, система не реализована);
-`openspec/changes/<id>/` — предлагаемые изменения: `proposal.md`, `design.md`,
-`tasks.md` и `specs/` с дельтой требований (`## ADDED Requirements`).
-
-Новая функциональность начинается с нового каталога в `changes/`, а не с
-правки кода. После реализации изменение архивируется, и дельта переезжает в
-`openspec/specs/`.
+Исторические спецификации OpenSpec сохранены в
+[`docs/archive/openspec/`](docs/archive/openspec/) и не являются действующими.
+Новая функциональность начинается с требования в `.planning/REQUIREMENTS.md`,
+а не с правки кода.

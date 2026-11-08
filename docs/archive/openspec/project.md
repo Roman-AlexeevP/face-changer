@@ -1,5 +1,9 @@
 # face-changer
 
+> **Архив.** Исторические требования MVP. Действующие требования —
+> [`.planning/REQUIREMENTS.md`](../../../.planning/REQUIREMENTS.md), действующий
+> процесс — GSD. Ссылки ниже ведут на актуальные документы.
+
 ## Что это
 
 Telegram-бот: пользователь присылает одну фотографию, бот подставляет лицо в
@@ -102,13 +106,16 @@ motion transfer / subject swap) и возвращает готовое виде�
 максимуму**: без I/O, без чтения часов и случайности изнутри, неизменяемые
 `dataclass(frozen=True)`, ошибки как значения (`Result`), явные зависимости
 параметрами. Агрессивная декомпозиция: одна функция — одно действие.
-Подробно, с примерами и лимитами — `AGENTS.md`.
+Подробно, с примерами и лимитами — [`AGENTS.md`](../../../AGENTS.md).
 
 ## Ссылки
 
-- `docs/architecture.md` — модули, контракты, данные, потоки, отказы
-- `docs/stack.md` — стек и обоснование
-- `docs/implementation-plan.md` — этапы и задачи
-- `openspec/changes/mvp-001-core-flow/specs/` — требования MVP (дельта; после
-  архивации переедут в `openspec/specs/`)
-- `openspec/changes/mvp-001-core-flow/` — изменение, которым вводится MVP
+- [`docs/architecture.md`](../../../docs/architecture.md) — модули, контракты,
+  данные, потоки, отказы
+- [`docs/stack.md`](../../../docs/stack.md) — стек и обоснование
+- [`docs/implementation-plan.md`](../../../docs/implementation-plan.md) — этапы
+  и задачи
+- [`changes/mvp-001-core-flow/specs/`](changes/mvp-001-core-flow/specs/) —
+  исторические требования MVP
+- [`changes/mvp-001-core-flow/`](changes/mvp-001-core-flow/) — изменение,
+  которым вводился MVP

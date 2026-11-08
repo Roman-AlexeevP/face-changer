@@ -8,22 +8,26 @@ Telegram-бот: пользователь присылает фото, бот п
 через Higgsfield API (Genjutsu) и возвращает видео. Рынок РФ, MVP на заглушках
 оплаты и движка.
 
-Контекст: [`openspec/project.md`](openspec/project.md).
+Контекст: [`.planning/PROJECT.md`](.planning/PROJECT.md).
+Требования: [`.planning/REQUIREMENTS.md`](.planning/REQUIREMENTS.md).
+План: [`.planning/ROADMAP.md`](.planning/ROADMAP.md).
 Архитектура: [`docs/architecture.md`](docs/architecture.md).
-План: [`docs/implementation-plan.md`](docs/implementation-plan.md).
+История: [`docs/archive/openspec/project.md`](docs/archive/openspec/project.md).
 
-## Сначала спецификация, потом код
+## Сначала требования и план, потом код
 
-Проект ведётся по OpenSpec. Перед реализацией любой фичи:
+Проект ведётся по GSD. Перед реализацией любой фичи:
 
-1. Изменение создаётся в `openspec/changes/<change-id>/` — `proposal.md`,
-   `design.md`, `tasks.md`, `specs/<capability>/spec.md` (дельта с
-   `## ADDED Requirements`).
-2. Проверка обязательна: `openspec validate --all`.
-3. Код пишется по задачам из `tasks.md`, а не по памяти.
+1. Требование живёт в [`.planning/REQUIREMENTS.md`](.planning/REQUIREMENTS.md)
+   с ID вида `GEN-03`; если требования нет — сначала добавь его.
+2. Фаза и критерии приёмки — в [`.planning/ROADMAP.md`](.planning/ROADMAP.md).
+3. План фазы — `.planning/phases/<NN-name>/PLAN.md`; код пишется по задачам
+   плана, а не по памяти.
+4. После фазы обнови `.planning/STATE.md` и трассировку требований.
 
-Не начинай писать код в обход спецификации. Если требования противоречат
-коду — сначала правь спецификацию.
+Исторические спецификации OpenSpec сохранены в
+[`docs/archive/openspec/`](docs/archive/openspec/) и не являются действующими.
+Если требование противоречит коду — сначала правь требование.
 
 ## Стиль кода: функциональный подход
 
@@ -117,16 +121,16 @@ def pay(order: Order, now: datetime) -> Result[Order, OrderError]:
 Всё в контейнерах, хостовое окружение не требуется:
 
 ```powershell
-.\tasks.ps1 test      # pytest + HTML-отчёт в reports/
-.\tasks.ps1 lint      # ruff check + ruff format --check
-.\tasks.ps1 migrate   # alembic upgrade head (одноразовая джоба)
-.\tasks.ps1 up        # postgres + bot + worker
+.\tasks.cmd test      # pytest + HTML-отчёт в reports/
+.\tasks.cmd lint      # ruff check + ruff format --check
+.\tasks.cmd migrate   # alembic upgrade head (одноразовая джоба)
+.\tasks.cmd up        # postgres + bot + worker
 ```
 
 Без обёртки: `docker compose --profile test run --rm tests`,
 `docker compose --profile tools run --rm migrate`.
 
-Спецификации: `openspec validate --all`.
+GSD: `node ~/.agents/gsd-core/bin/gsd-tools.cjs` и навыки `gsd-*`.
 
 ## Git
 

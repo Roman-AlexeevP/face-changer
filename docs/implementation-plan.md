@@ -1,8 +1,8 @@
 # План реализации
 
-Документ для управления работой. Требования — в `openspec/specs/`,
-технические решения — в `docs/architecture.md` и
-`openspec/changes/mvp-001-core-flow/design.md`.
+Документ для управления работой. Требования — в `.planning/REQUIREMENTS.md`,
+технические решения — в `docs/architecture.md`; исторический дизайн MVP —
+в `docs/archive/openspec/changes/mvp-001-core-flow/design.md`.
 
 ## Цель MVP
 
