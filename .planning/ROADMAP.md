@@ -1,168 +1,114 @@
 # Roadmap: Face Changer
 
-## Overview
+## Reset decision — 2026-11-09
 
-Путь от работающего mock-сценария к живому продукту: сначала закрепить
-пользовательский путь и денежную логику на заглушках, затем подтвердить
-контракт Higgsfield живым заказом, потом довести доставку, эксплуатацию и
-реальную оплату. Каждая фаза заканчивается проверяемым поведением, а не
-галочкой в задаче.
+Активный roadmap пересобран с нуля вокруг двух внешних гейтов:
 
-## Phases
+1. доказать реальную генерацию через Higgsfield;
+2. подключить минимально доступную оплату.
 
-- [x] **Phase 1: Сквозной сценарий на заглушках** — весь путь в Telegram на
-  `ENGINE=mock`, E2E-тест, `request_id`/retry/watchdog, матрица ошибок.
-- [ ] **Phase 2: Живой Higgsfield** — контракт, probe, один реальный заказ.
-- [ ] **Phase 3: Нормализация и доставка** — 720p/H.264/faststart, `file_id`,
-  429, лимиты Telegram.
-- [ ] **Phase 4: Лимиты и админка** — гейт кредитов, дневной лимит, `/admin*`,
-  алерты, `/health`, очистка.
-- [ ] **Phase 5: ЮKassa** — реальный платёж, идемпотентность, чеки.
-- [ ] **Phase 6: Тесты, CI и документация** — «миграция == модели», CI,
-  покрытие, приведение `docs/architecture.md` к коду.
+Завершённая Phase 1 на mock/stub сохранена как историческая базовая линия в
+`.planning/archive/2026-11-09-pre-reset/`. Фазы 3–6 удалены из активного плана:
+после внешних гейтов их объём будет определён заново на основании фактических
+ограничений API, стоимости и пользовательского сценария.
 
-## Phase Details
+## Active phase
 
-### Phase 1: Сквозной сценарий на заглушках
-**Goal**: пользователь проходит весь путь в Telegram на `ENGINE=mock` и
-`PAYMENT_PROVIDER=stub`; движок готов к живому подключению: `request_id`
-переживает рестарт, повторы и сторож работают, ошибки доведены до ledger.
-**Mode**: mvp
-**Depends on**: Nothing (first phase)
-**Requirements**: ENTRY-01, ENTRY-02, ENTRY-03, ENTRY-04, ENTRY-05, ENTRY-06, ENTRY-07, ENTRY-08, ENTRY-09, TMPL-01, TMPL-02, TMPL-03, TMPL-04, GEN-01, GEN-02, GEN-03, GEN-04, GEN-05, GEN-06, GEN-07, GEN-08, GEN-09, GEN-10, GEN-11, BILL-01, BILL-02, BILL-03, BILL-04, BILL-05, BILL-06, BILL-08, BILL-09, BILL-10, PRIV-01, PRIV-02, PRIV-03, PRIV-05, PRIV-06, QA-01, QA-03, QA-06
-**Success Criteria** (what must be TRUE):
-  1. Пользователь в Telegram проходит `/start → согласие → stub-оплата → фото
-     → mock-видео → delivered`; фото удалено, ledger сходится.
-  2. E2E-тест через aiogram test-client проходит в Docker на `ENGINE=mock`,
-     `PAYMENT_PROVIDER=stub`.
-  3. `request_id`/resume, retry 2/5/15, timeout, watchdog и ровно один refund
-     покрыты тестами с фейковым движком.
-  4. Матрица ошибок работает: `rejected` → refund, `no_credits` → refund +
-     пауза продаж, `failed`/`timeout` → refund; пользователь видит текст без
-     кодов.
-  5. `.\tasks.cmd test` зелёный, ruff чистый, PII в логах нет.
-**Plans**: 4 plans
+### Phase 2: Внешние интеграции — Higgsfield и минимальная оплата
 
-Plans:
-- [x] 01-01: E2E на заглушках в Telegram и aiogram test-client
-- [x] 01-02: `request_id`, resume, retry и watchdog
-- [x] 01-03: матрица ошибок, ledger и удаление фото
-- [x] 01-04: проверка, docs, коммит
+**Goal**: получить достаточно фактов для решения, можно ли запускать продукт на
+реальном движке и реальном минимальном платеже, не подменяя внешние контракты
+предположениями.
 
-### Phase 2: Живой Higgsfield
-**Goal**: контракт Higgsfield подтверждён живыми запросами; один реальный
-заказ доходит до `sendVideo`, `request_id` переживает рестарт.
-**Mode**: mvp
-**Depends on**: Phase 1
-**Requirements**: TMPL-06, GEN-12
-**Success Criteria** (what must be TRUE):
-  1. Live-probe подтверждает auth, upload, submit, `status_url`, имена
-     статусов, `video.url` и форму ошибок.
-  2. Один реальный заказ доставлен в Telegram, фото удалено, ledger сходится.
-  3. Повторный submit не создаётся; после рестарта polling продолжается по
-     `request_id`.
-  4. `docs/higgsfield-contract.md` не содержит неподтверждённых полей в
-     используемом пути.
-**Plans**: 3 plans
+**Mode**: mvp / discovery-to-implementation
 
-Plans:
-- [ ] 02-01: live-probe и фиксация контракта
-- [ ] 02-02: правки движка по фактическому контракту
-- [ ] 02-03: живой E2E-заказ и проверка БД
+**Depends on**: историческая mock/stub baseline, доступ к тестовым или рабочим
+учётным данным Higgsfield и выбранного платёжного провайдера.
 
-### Phase 3: Нормализация и доставка
-**Goal**: результат приводится к параметрам Telegram и доставляется
-идемпотентно, с `file_id` и обработкой лимитов.
-**Mode**: mvp
-**Depends on**: Phase 2
-**Requirements**: TMPL-05, DELIV-01, DELIV-02, DELIV-03, DELIV-04, DELIV-05, DELIV-06, DELIV-07, PRIV-08
-**Success Criteria** (what must be TRUE):
-  1. Видео нормализуется в 720p/H.264/AAC/faststart и отправляется как видео.
-  2. Файл больше лимита нормализуется, затем отправляется документом.
-  3. 429 обрабатывается с `retry_after`, заказ не падает.
-  4. `file_id` сохранён; повторная доставка не перегенерирует видео.
-  5. Локальная копия удалена после успешной отправки.
-**Plans**: 3 plans
+**Requirements**: HF-01…HF-06, PAY-01…PAY-06, GATE-01…GATE-04
 
-Plans:
-- [ ] 03-01: ffmpeg-нормализация и проверка размера
-- [ ] 03-02: `file_id`, 429 и идемпотентная доставка
-- [ ] 03-03: проверка на реальном видео
+**Success Criteria**:
 
-### Phase 4: Лимиты и админка
-**Goal**: сервис защищён от слива кредитов и управляется без SQL.
-**Mode**: mvp
-**Depends on**: Phase 3
-**Requirements**: PRIV-04, PRIV-07, OPS-01, OPS-02, OPS-03, OPS-04, OPS-05, OPS-06, OPS-07, OPS-08, OPS-09
-**Success Criteria** (what must be TRUE):
-  1. Дневной лимит и гейт кредитов не создают заказ при исчерпании.
-  2. `/admin stats|balance|sales|ban|order` работают только для админов.
-  3. Алерты `low_credits`, `job_stale`, `no_credits` и рост ошибок приходят.
-  4. `/health` отдаёт 200/503 по состоянию БД.
-  5. `STORAGE_DIR` чистится при старте; удаление по запросу работает.
-**Plans**: 4 plans
+1. Live-probe Higgsfield подтверждает auth, submit, upload либо публичные URL,
+   polling, terminal status, `video.url`, время и стоимость одной генерации.
+2. Один реальный тестовый заказ проходит через существующий worker pipeline и
+   возвращает скачиваемый результат; повторный submit не создаёт дубль.
+3. Выбран минимальный доступный платёжный маршрут, а не предполагаемый заранее
+   провайдер; его контракт и ограничения зафиксированы в документации.
+4. Тестовый платёж однократно переводит заказ в `paid`, корректно отражается в
+   ledger и безопасно переживает повторное событие.
+5. Live-режим не использует `stub`, секреты не попадают в git/логи, а mock/stub
+   тесты продолжают проходить без внешних ключей.
+6. По каждому внешнему гейту есть измеренный результат и решение `go`/`stop`.
 
-Plans:
-- [ ] 04-01: гейт кредитов и дневной лимит
-- [ ] 04-02: админ-команды и аудит
-- [ ] 04-03: алерты и `/health`
-- [ ] 04-04: очистка хранилища и удаление данных
+**Plans**: 0 — детальный PLAN.md создаётся после фиксации доступа и выбора
+платёжного маршрута.
 
-### Phase 5: ЮKassa
-**Goal**: реальная оплата заменяет stub без изменения хендлеров.
-**Mode**: mvp
-**Depends on**: Phase 4
-**Requirements**: BILL-07, PAY-01, PAY-02, PAY-03, PAY-04, PAY-05, PAY-06, PAY-07
-**Success Criteria** (what must be TRUE):
-  1. `PAYMENT_PROVIDER=yookassa` создаёт счёт и подтверждает оплату.
-  2. Повторное уведомление с тем же `payment_id` не меняет баланс.
-  3. На успехе создаются `topup` и `order_paid`, заказ переходит в `paid`.
-  4. Stub не используется в проде.
-  5. Чеки/фискализация самозанятого соответствуют требованиям ЮKassa.
-**Plans**: 3 plans
+### Milestones
 
-Plans:
-- [ ] 05-01: провайдер, счёт и конфигурация
-- [ ] 05-02: подтверждение, ledger и идемпотентность
-- [ ] 05-03: чеки, секреты и проверка
+#### M2.1 — Access and provider decision
 
-### Phase 6: Тесты, CI и документация
-**Goal**: регресс ловится автоматически, схема БД и документация не расходятся
-с кодом.
-**Mode**: mvp
-**Depends on**: Phase 5
-**Requirements**: QA-02, QA-04, QA-05, QA-07
-**Success Criteria** (what must be TRUE):
-  1. Тест «миграция == модели» проходит на пустой БД.
-  2. CI на каждый пуш гоняет ruff, pytest и покрытие.
-  3. Порог покрытия не ниже 62% и не падает.
-  4. `docs/architecture.md` соответствует `VideoEngine`, статусам job и
-     отсутствию FastAPI.
-**Plans**: 3 plans
+- проверить доступность Higgsfield и выбранных платёжных вариантов;
+- определить sandbox/production-safe режим;
+- зафиксировать необходимые секреты, callback/webhook и ограничения;
+- принять решение о минимальном платёжном маршруте.
 
-Plans:
-- [ ] 06-01: «миграция == модели» и тесты пайплайна
-- [ ] 06-02: CI и порог покрытия
-- [ ] 06-03: docs alignment
+**Exit**: есть рабочие credentials или явный blocker, а платёжный провайдер
+выбран по фактической доступности.
+
+#### M2.2 — Higgsfield live probe
+
+- выполнить auth-only и submit/poll probe;
+- проверить upload или публичные URL;
+- сохранить обезличенные формы ответов и ошибок;
+- измерить latency, стоимость и поведение retry/rate limit.
+
+**Exit**: `docs/higgsfield-contract.md` описывает подтверждённый контракт, либо
+зафиксирован `stop` с причиной.
+
+#### M2.3 — Minimal payment probe
+
+- создать минимальный счёт/платёж;
+- подтвердить успешный, отменённый и повторный callback/event;
+- проверить сумму в копейках, `payment_id` и idempotency;
+- определить, какие требования по чекам обязательны уже сейчас.
+
+**Exit**: платёжный API и событие подтверждения воспроизводимы, либо есть
+явный `stop` и выбран следующий доступный маршрут.
+
+#### M2.4 — Adapters and vertical verification
+
+- привести Higgsfield adapter к фактическому контракту;
+- реализовать выбранный `PaymentProvider`;
+- прогнать один вертикальный сценарий с реальным внешним вызовом;
+- проверить ledger, статусы заказа, resume и отсутствие повторного списания.
+
+**Exit**: один тестовый заказ и один тестовый платёж проходят проверяемый путь
+без ручного SQL.
+
+#### M2.5 — Gate review
+
+- обновить документацию и environment checklist;
+- провести mock/stub regression и targeted live verification;
+- измерить стоимость, latency, error rate и операционные ограничения;
+- принять `go` к следующему roadmap или `stop` с конкретным решением.
+
+**Exit**: есть короткий decision record, на основании которого можно строить
+следующий roadmap, а не продолжать работу по предположениям.
+
+## Archived baseline
+
+- Phase 1: сквозной mock/stub-сценарий — завершена до reset, артефакты сохранены
+  в `.planning/archive/2026-11-09-pre-reset/`.
 
 ## Progress
 
-**Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
+| Scope | Status |
+|---|---|
+| Historical mock/stub baseline | Complete, archived |
+| Phase 2 external integration gates | Next, not started |
+| Future phases | Intentionally undefined |
 
-| Phase | Plans Complete | Status | Completed |
-|-------|----------------|--------|-----------|
-| 1. Сквозной сценарий на заглушках | 4/4 | Complete | 2026-11-08 |
-| 2. Живой Higgsfield | 0/3 | Not started | - |
-| 3. Нормализация и доставка | 0/3 | Not started | - |
-| 4. Лимиты и админка | 0/4 | Not started | - |
-| 5. ЮKassa | 0/3 | Not started | - |
-| 6. Тесты, CI и документация | 0/3 | Not started | - |
+---
 
-## Backlog / v2
-
-- [ ] **«Ещё раз»: каталог заново, затем оплата** — сейчас кнопка сразу
-  создаёт заказ и проводит stub-оплату; нужно показать каталог/шаблон,
-  превью и цену, и только потом создавать заказ и оплачивать. См.
-  [`.planning/todos/pending/2026-11-08-again-catalog.md`](.planning/todos/pending/2026-11-08-again-catalog.md)
-  и `ENTRY-V2-01`. Phase 2 не начинать до отдельного решения.
+*Roadmap reset: 2026-11-09*

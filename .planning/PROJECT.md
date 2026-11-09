@@ -25,35 +25,26 @@ Telegram-бот для рынка РФ: пользователь присыла�
 
 ## Requirements
 
-### Validated
+### Validated baseline
 
 - ✓ Сквозной путь `/start → согласие → stub-оплата → фото → mock-движок →
   sendVideo` — проверен в Telegram.
-- ✓ Phase 1: E2E на заглушках, `request_id`/resume, retry 2/5/15, watchdog,
-  матрица ошибок, удаление фото; 248 тестов, покрытие 81%.
-- ✓ Домен: стейт-машина заказа, ledger, pricing, moderation, result — 98–100%
-  тестов.
-- ✓ БД: `users`, `templates`, `orders`, `jobs`, `ledger`, `events`,
-  `service_flags`; миграции `0001_initial`, `0002_service_flags`.
-- ✓ Очередь на PostgreSQL `FOR UPDATE SKIP LOCKED`; два процесса bot/worker.
-- ✓ Higgsfield-движок: upload → submit → poll, 3 повтора, типизированные
-  ошибки; 13 тестов на `httpx.MockTransport` (контракт не подтверждён живым
-  запросом).
-- ✓ Docker compose, тесты в контейнере с `postgres-test` и схемой на
-  xdist-воркер; 206 тестов, покрытие 62%, ruff чист.
-- ✓ Карта кодовой базы `.planning/codebase/` (штамп `8cdc2ab`).
+- ✓ Mock/stub baseline: `request_id`/resume, retry 2/5/15, watchdog, матрица
+  ошибок, ledger и удаление фото; 248 тестов, покрытие 81% в Docker.
+- ✓ Домен, PostgreSQL queue через `FOR UPDATE SKIP LOCKED`, два процесса
+  bot/worker, типизированные порты и миграции готовы как база интеграции.
+- ✓ Higgsfield adapter и stub payment provider существуют, но live-контракты
+  ещё не подтверждены.
 
 ### Active
 
-- [x] **Phase 1**: сквозной сценарий на заглушках после текущих изменений +
-  E2E-тест + `request_id`/retry/watchdog/матрица ошибок — ручной позитивный
-  прогон пройден.
-- [ ] **Phase 2**: живой контракт Higgsfield и один реальный заказ.
-- [ ] **Phase 3**: нормализация результата, `file_id`, 429, доставка.
-- [ ] **Phase 4**: дневной лимит, гейт кредитов, админка, алерты, `/health`,
-  очистка и удаление данных.
-- [ ] **Phase 5**: ЮKassa.
-- [ ] **Phase 6**: CI, «миграция == модели», покрытие, docs alignment.
+- [ ] **Phase 2**: два внешних гейта — live-probe Higgsfield и минимально
+  доступная интеграция оплаты. Сначала доступ и выбор провайдера, затем
+  адаптеры и один вертикальный тестовый сценарий.
+- [ ] Следующие фазы намеренно не определены до результатов обоих гейтов.
+
+Детали активной работы находятся в `.planning/ROADMAP.md` и
+`.planning/phases/FC-02-vneshnie-integratsii/CONTEXT.md`.
 
 ### Out of Scope
 
@@ -74,25 +65,23 @@ Telegram-бот для рынка РФ: пользователь присыла�
 
 ## Context
 
-- Brownfield: код и документация уже есть. `.planning/codebase/` — срез на
-  `8cdc2ab`, HEAD `38518a3`; последний коммит добавил `outcomes.py`,
-  `sales.py`, `no_credits`/`rejected`, общий том медиа.
-- Документация расходится с кодом: `docs/architecture.md` описывает
-  `VideoEngine.ensure_asset/submit/poll/cancel`, а порт — один `generate`;
-  статусы job в документе `submitted/polling`, в коде `new/running/done/failed`.
-- Контракт Higgsfield не подтверждён: 8 предположений в
-  `docs/higgsfield-contract.md`.
-- Ключей HF и файлов `templates/default/source.mp4`, `prompt.txt` пока нет.
-  Сначала прогоняем весь сценарий на `ENGINE=mock`, `PAYMENT_PROVIDER=stub`.
-- Известные баги: `paid` без фото блокирует пользователя; остановка воркера
-  оставляет `running`; фото остаётся при провале постановки в очередь; гонка
-  двух фото; возможен возврат после уже отправленного видео.
-- UX-долг: «Ещё раз» использует `CHECKOUT_CALLBACK`, поэтому новый заказ и
-  stub-оплата проходят сразу, без повторного показа каталога/шаблона. Нужен
-  отдельный экран каталога и явная оплата — todo и `ENTRY-V2-01`.
-- `.\tasks.cmd test` починен (UTF-8 BOM в `tasks.ps1`); до этого падал парсер
-  Windows PowerShell 5.1.
-- Исторические требования OpenSpec сохранены в `docs/archive/openspec/`.
+- Brownfield: код и документация уже есть; mock/stub baseline сохранён в
+  `.planning/archive/2026-11-09-pre-reset/`.
+- Карта `.planning/codebase/` имеет старый штамп и используется только как
+  справочный материал; источником истины для текущей работы являются код,
+  `AGENTS.md` и новые planning-документы.
+- Контракт Higgsfield не подтверждён живым запросом: предположения перечислены
+  в `docs/higgsfield-contract.md`.
+- Ключей HF и файлов `templates/default/source.mp4`, `prompt.txt` в репозитории
+  нет. Для обычной разработки остаются `ENGINE=mock` и
+  `PAYMENT_PROVIDER=stub`.
+- Платёжный маршрут не фиксируем заранее: сначала проверяем доступность
+  ЮKassa, Telegram Payments или другого реально доступного варианта, затем
+  выбираем минимальный безопасный путь.
+- UX-долг «Ещё раз» и прочие будущие продуктовые улучшения отложены до
+  подтверждения двух внешних гейтов.
+- Исторические требования OpenSpec сохранены в `docs/archive/openspec/`, а
+  предыдущие GSD-планы — в `.planning/archive/2026-11-09-pre-reset/`.
 
 ## Constraints
 
@@ -110,7 +99,8 @@ Telegram-бот для рынка РФ: пользователь присыла�
   статуса нет.
 - **Privacy**: фото удаляется при терминальном статусе; PII не логируется;
   секреты только в `.env`.
-- **Market**: РФ, самозанятый, 18+, ЮKassa, чеки/фискализация по требованиям.
+- **Market**: РФ, самозанятый, 18+; платёжный маршрут и требования к чекам
+  подтверждаются на текущем внешнем гейте.
 - **Engine**: Higgsfield Genjutsu — единственный живой движок; `mock` для
   разработки.
 - **Tests**: Docker, xdist, схема на воркера; фиксированные пути запрещены.
@@ -123,16 +113,19 @@ Telegram-бот для рынка РФ: пользователь присыла�
 | Очередь на PostgreSQL, без брокера | один компонент, транзакционность, отладка SQL | ✓ Good |
 | Два процесса bot/worker | рестарт бота не убивает генерации | ✓ Good |
 | Статусы только через домен | деньги и возвраты в одном месте | ✓ Good |
-| Polling, не webhook | не нужен публичный HTTPS на этапе проверки | ✓ Good |
-| Заглушка оплаты как провайдер | проверяет весь путь до ЮKassa | ✓ Good |
+| Polling для bot/worker baseline | не нужен публичный HTTPS до внешнего интеграционного гейта | ✓ Baseline |
+| Заглушка оплаты как провайдер | проверяет путь без внешнего платёжного API | ✓ Baseline |
 | Локальное хранилище | фото живёт минуты, S3 не нужен | — Pending |
 | Шаблон как данные, один default | контент меняется без релиза | ✓ Good |
 | Бесплатный реролл не входит в v1 | проще MVP; «Ещё раз» = новый заказ | — Pending |
 | «Ещё раз» должен вести в каталог, не в автооплату | сейчас кнопка сразу создаёт заказ и проводит stub-оплату; UX-долг | — Pending |
 | `no_credits` = `failed` + код, пауза продаж 60 мин | не расширять стейт-машину; автопауза | — Pending |
 | Job-статусы `new/running/done/failed`, `request_id` в БД | честно отражает код; resume по `request_id` | — Pending |
-| Mock-first до живых ключей | проверить UX и деньги без расходов | — Pending |
-| Транспорт ЮKassa: webhook или Telegram Payments | зависит от требований ЮKassa и наличия HTTPS | — Pending |
+| Mock-first до живых ключей | проверить UX и деньги без расходов | ✓ Baseline |
+| Два внешних гейта до нового roadmap | не планировать downstream-фазы на
+  неподтверждённых контрактах | — Active |
+| Платёжный маршрут выбирается по доступности | сначала сравнить реально
+  доступные API, sandbox и требования РФ | — Active |
 
 ## Evolution
 
@@ -152,4 +145,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-11-08 after GSD initialization*
+*Last updated: 2026-11-09 after planning reset*

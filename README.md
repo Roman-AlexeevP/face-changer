@@ -3,9 +3,10 @@
 Telegram-бот: пользователь присылает фото, бот вставляет лицо в видео-шаблон
 через Higgsfield API (Genjutsu) и возвращает готовое видео.
 
-Стадия: **MVP на заглушках.** Сквозной путь `/start → согласие → stub-оплата →
-фото → mock-движок → sendVideo` работает в Telegram. Следующий гейт — живой
-Higgsfield: нужны ключи и `templates/default/source.mp4`.
+Стадия: **внешние интеграционные гейты.** Mock/stub-сценарий уже работает в
+Telegram и сохранён как регрессионная база. Следующая фаза проверяет live
+Higgsfield и минимально доступную оплату; нужны внешние credentials и тестовые
+данные, а платёжный провайдер выбирается по фактической доступности.
 
 ## Документы
 
@@ -16,7 +17,7 @@ Higgsfield: нужны ключи и `templates/default/source.mp4`.
 | [`.planning/ROADMAP.md`](.planning/ROADMAP.md) | фазы, критерии приёмки, трассировка |
 | [`docs/architecture.md`](docs/architecture.md) | компоненты, контракты, схема БД, потоки |
 | [`docs/stack.md`](docs/stack.md) | стек, env-переменные, структура |
-| [`docs/implementation-plan.md`](docs/implementation-plan.md) | исходный план этапов |
+| [`docs/implementation-plan.md`](docs/implementation-plan.md) | исторический исходный план этапов |
 | [`docs/higgsfield-contract.md`](docs/higgsfield-contract.md) | что подтверждено и что проверить |
 | [`docs/archive/openspec/`](docs/archive/openspec/) | исторические требования MVP (архив, не действуют) |
 
@@ -62,12 +63,14 @@ entrypoint приложения: при нескольких репликах о
 
 ## С чего начать
 
-1. Открыть [`.planning/ROADMAP.md`](.planning/ROADMAP.md) — текущая фаза и
-   критерии приёмки.
+1. Открыть [`.planning/ROADMAP.md`](.planning/ROADMAP.md) — текущую Phase 2 и
+   milestones внешних интеграций.
 2. Сверить задачу с [`.planning/REQUIREMENTS.md`](.planning/REQUIREMENTS.md).
-3. Перед живым запуском пройти чек-лист
+3. Для Higgsfield пройти чек-лист
    [`docs/higgsfield-contract.md`](docs/higgsfield-contract.md).
-4. Для разработки — `ENGINE=mock`, `PAYMENT_PROVIDER=stub`.
+4. Для оплаты сначала зафиксировать доступный провайдер и транспорт.
+5. Для разработки без внешних ключей — `ENGINE=mock`,
+   `PAYMENT_PROVIDER=stub`.
 
 ## Процесс
 

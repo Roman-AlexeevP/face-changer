@@ -1,8 +1,11 @@
-# План реализации
+# Исторический план реализации
 
-Документ для управления работой. Требования — в `.planning/REQUIREMENTS.md`,
-технические решения — в `docs/architecture.md`; исторический дизайн MVP —
-в `docs/archive/openspec/changes/mvp-001-core-flow/design.md`.
+Этот документ сохранён как исходный дизайн MVP и больше не является активным
+планом работ. Актуальные требования и milestones находятся в
+`.planning/REQUIREMENTS.md` и `.planning/ROADMAP.md`; текущий контекст Phase 2 —
+в `.planning/phases/FC-02-vneshnie-integratsii/CONTEXT.md`.
+Технические решения — в `docs/architecture.md`; исторический дизайн MVP — в
+`docs/archive/openspec/changes/mvp-001-core-flow/design.md`.
 
 ## Цель MVP
 
