@@ -19,6 +19,17 @@
 `.planning/archive/2026-11-09-pre-reset/`. Его тесты должны оставаться зелёными
 и служат регрессией, но не определяют новые milestones.
 
+## Repository showcase artifacts
+
+Before M2.1, complete the supporting requirements:
+
+- `REPO-01`: GitHub Actions runs lint and the full Docker test suite;
+- `REPO-02`: `docs/agent-workflow.md` explains the repeatable agent loop;
+- `REPO-03`: `tasks.cmd demo` runs the mock E2E path without live secrets.
+
+These artifacts make the phase reproducible for a new agent or reviewer and do
+not change the external integration scope.
+
 ## Milestone sequence
 
 ### M2.1 — Access and decision

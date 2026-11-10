@@ -12,6 +12,7 @@ Telegram-бот: пользователь присылает фото, бот п
 Требования: [`.planning/REQUIREMENTS.md`](.planning/REQUIREMENTS.md).
 План: [`.planning/ROADMAP.md`](.planning/ROADMAP.md).
 Архитектура: [`docs/architecture.md`](docs/architecture.md).
+Workflow агента: [`docs/agent-workflow.md`](docs/agent-workflow.md).
 История: [`docs/archive/openspec/project.md`](docs/archive/openspec/project.md).
 
 ## Сначала требования и план, потом код
@@ -121,6 +122,7 @@ def pay(order: Order, now: datetime) -> Result[Order, OrderError]:
 Всё в контейнерах, хостовое окружение не требуется:
 
 ```powershell
+\.\tasks.cmd demo      # mock E2E без внешних ключей
 .\tasks.cmd test      # pytest + HTML-отчёт в reports/
 .\tasks.cmd lint      # ruff check + ruff format --check
 .\tasks.cmd migrate   # alembic upgrade head (одноразовая джоба)

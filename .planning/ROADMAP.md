@@ -25,7 +25,8 @@
 **Depends on**: историческая mock/stub baseline, доступ к тестовым или рабочим
 учётным данным Higgsfield и выбранного платёжного провайдера.
 
-**Requirements**: HF-01…HF-06, PAY-01…PAY-06, GATE-01…GATE-04
+**Requirements**: HF-01…HF-06, PAY-01…PAY-06, GATE-01…GATE-04;
+поддерживающие REPO-01…REPO-03
 
 **Success Criteria**:
 
@@ -43,6 +44,13 @@
 
 **Plans**: 0 — детальный PLAN.md создаётся после фиксации доступа и выбора
 платёжного маршрута.
+
+### Supporting agent-workflow artifacts
+
+До M2.1 добавляются три репозиторных артефакта, не меняющие продуктовую
+логику: CI, инструкция для агента и секрет-независимая demo-команда.
+
+**Exit**: REPO-01…REPO-03 проверены локально или в GitHub Actions.
 
 ### Milestones
 
@@ -107,6 +115,7 @@
 |---|---|
 | Historical mock/stub baseline | Complete, archived |
 | Phase 2 external integration gates | Next, not started |
+| Agent workflow supporting artifacts | In progress |
 | Future phases | Intentionally undefined |
 
 ---

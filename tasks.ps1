@@ -11,7 +11,7 @@ docker compose run --rm и не оставляют следов.
 [CmdletBinding()]
 param(
     [Parameter(Position = 0)]
-    [ValidateSet('help', 'up', 'down', 'logs', 'migrate', 'test', 'lint', 'fmt', 'psql', 'ps', 'clean')]
+    [ValidateSet('help', 'up', 'down', 'logs', 'migrate', 'demo', 'test', 'lint', 'fmt', 'psql', 'ps', 'clean')]
     [string]$Task = 'help'
 )
 
@@ -34,7 +34,8 @@ function Show-Usage {
         '  up       собрать и поднять postgres, bot, worker',
         '  down     остановить и удалить контейнеры',
         '  migrate  одноразовая джоба: alembic upgrade head',
-        '  test     тесты в контейнере, HTML-отчёт в reports/',
+        '  demo     mock E2E без внешних ключей',
+        '  test     полный тестовый прогон в контейнере, HTML-отчёт в reports/',
         '  lint     ruff check + ruff format --check',
         '  fmt      ruff format',
         '  psql     psql внутри контейнера postgres',
@@ -60,6 +61,12 @@ switch ($Task) {
     'down' { Invoke-Compose @('down') }
     'logs' { Invoke-Compose @('logs', '-f', '--tail=100') }
     'migrate' { Invoke-Compose @('--profile', 'tools', 'run', '--rm', 'migrate') }
+    'demo' {
+        Invoke-Compose @(
+            '--profile', 'test', 'run', '--rm', '-T', '--build', 'tests',
+            'pytest', '-q', 'tests/test_e2e_mock.py'
+        )
+    }
     'test' { Invoke-Compose @('--profile', 'test', 'run', '--rm', '--build', 'tests') }
     'lint' {
         Invoke-Compose @(

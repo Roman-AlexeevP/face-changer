@@ -55,6 +55,18 @@
 - [ ] **GATE-04**: По каждому гейту принято решение `go` или `stop` с измеренными
   данными: доступность, стоимость, задержка, ошибки и следующий шаг.
 
+## Repository agent workflow
+
+Эти требования поддерживают демонстрацию и воспроизводимость агентной работы;
+они не являются отдельной продуктовой фазой и не требуют внешних credentials.
+
+- [ ] **REPO-01**: GitHub Actions на push и pull request запускает ruff и полный
+  Docker-тестовый прогон с PostgreSQL.
+- [ ] **REPO-02**: `docs/agent-workflow.md` описывает для нового агента порядок
+  чтения контекста, планирования, реализации, проверки и обновления состояния.
+- [ ] **REPO-03**: `tasks.cmd demo` запускает mock E2E-сценарий без Telegram,
+  Higgsfield, платёжных ключей и ручного SQL.
+
 ## Out of scope until both gates pass
 
 - нормализация и сложная доставка видео;
@@ -71,6 +83,7 @@
 | Higgsfield probe | HF-01…HF-06 | Phase 2 | Pending |
 | Minimal payment | PAY-01…PAY-06 | Phase 2 | Pending |
 | Integration gates | GATE-01…GATE-04 | Phase 2 | Pending |
+| Agent workflow artifacts | REPO-01…REPO-03 | Phase 2 support | Pending |
 
 ---
 

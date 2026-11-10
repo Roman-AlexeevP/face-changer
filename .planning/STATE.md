@@ -32,6 +32,7 @@ Progress: [█████░░░░░] 50% overall, historical baseline comp
 
 ## Active Milestones
 
+0. `REPO-01…REPO-03` — CI, agent workflow guide и secret-free demo.
 1. `M2.1` — доступы и выбор платёжного провайдера.
 2. `M2.2` — live-probe Higgsfield.
 3. `M2.3` — live-probe оплаты.
@@ -50,6 +51,8 @@ Progress: [█████░░░░░] 50% overall, historical baseline comp
 - Higgsfield contract считается неподтверждённым до live-probe.
 - Live credentials и медиафайлы не коммитятся; обычные тесты не зависят от них.
 - Будущие фазы не планируются до результатов двух внешних гейтов.
+- Agent-workflow tooling не меняет продуктовый scope: CI, guide и demo нужны для
+  воспроизводимой работы без live credentials.
 
 ### Pending Inputs
 
@@ -75,5 +78,5 @@ Progress: [█████░░░░░] 50% overall, historical baseline comp
 ## Session Continuity
 
 Last session: 2026-11-09 — roadmap reset initiated.
-Stopped at: archived old planning artifacts; active Phase 2 documents created.
+Stopped at: active Phase 2 documents created; repository agent tooling is next.
 Resume file: `.planning/phases/FC-02-vneshnie-integratsii/CONTEXT.md`.

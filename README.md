@@ -1,5 +1,7 @@
 # face-changer
 
+[![CI](https://github.com/Roman-AlexeevP/face-changer/actions/workflows/ci.yml/badge.svg)](https://github.com/Roman-AlexeevP/face-changer/actions/workflows/ci.yml)
+
 Telegram-бот: пользователь присылает фото, бот вставляет лицо в видео-шаблон
 через Higgsfield API (Genjutsu) и возвращает готовое видео.
 
@@ -17,6 +19,7 @@ Higgsfield и минимально доступную оплату; нужны �
 | [`.planning/ROADMAP.md`](.planning/ROADMAP.md) | фазы, критерии приёмки, трассировка |
 | [`docs/architecture.md`](docs/architecture.md) | компоненты, контракты, схема БД, потоки |
 | [`docs/stack.md`](docs/stack.md) | стек, env-переменные, структура |
+| [`docs/agent-workflow.md`](docs/agent-workflow.md) | воспроизводимый цикл работы агента |
 | [`docs/implementation-plan.md`](docs/implementation-plan.md) | исторический исходный план этапов |
 | [`docs/higgsfield-contract.md`](docs/higgsfield-contract.md) | что подтверждено и что проверить |
 | [`docs/archive/openspec/`](docs/archive/openspec/) | исторические требования MVP (архив, не действуют) |
@@ -28,7 +31,8 @@ Higgsfield и минимально доступную оплату; нужны �
 ```powershell
 .\tasks.cmd up        # поднять postgres, bot, worker
 .\tasks.cmd migrate   # одноразовая джоба: alembic upgrade head
-.\tasks.cmd test      # тесты + HTML-отчёт в reports/
+.\tasks.cmd demo      # mock E2E без Telegram/API-ключей
+.\tasks.cmd test      # полный тестовый прогон + HTML-отчёт
 .\tasks.cmd lint      # ruff check + format --check
 .\tasks.cmd down      # остановить
 ```
@@ -37,10 +41,15 @@ Higgsfield и минимально доступную оплату; нужны �
 PowerShell по умолчанию запрещает запуск `.ps1`. `tasks.ps1` сохранён в UTF-8
 с BOM, чтобы Windows PowerShell 5.1 корректно читал кириллицу.
 
-### Тесты
+### Demo и тесты
+
+`tasks.cmd demo` — быстрый демонстрационный сценарий для нового человека или
+агента. Он поднимает `postgres-test` и прогоняет `tests/test_e2e_mock.py` на
+`ENGINE=mock` и `PAYMENT_PROVIDER=stub`. Telegram-токен, Higgsfield credentials,
+платёжные ключи и ручной SQL не нужны.
 
 `tasks.cmd test` поднимает отдельную тестовую базу `postgres-test` (на tmpfs),
-гоняет pytest в параллельных воркерах и собирает покрытие:
+гоняет полный pytest в параллельных воркерах и собирает покрытие:
 
 - [`reports/report.html`](reports/report.html) — отчёт по тестам;
 - `reports/coverage/index.html` — покрытие.
